@@ -153,6 +153,9 @@ h1 em,h2 em{font-style:italic;color:var(--teal);}
 .nav-links a:hover{color:var(--teal);}
 .nav-links a[aria-current="page"]{color:var(--teal);border-bottom-color:rgba(97,192,142,.5);}
 .nav-cta{margin-left:6px;}
+/* .nav-links a sets padding:6px 0 and outranks .btn on specificity, which strips the
+   CTA button's horizontal padding. Restore it with a higher-specificity rule. */
+.nav-links .btn{padding:12px 24px;}
 .nav-toggle{
   display:none;
   background:none;border:1px solid rgba(97,192,142,.4);border-radius:2px;
@@ -750,3 +753,7 @@ html:not(.js) .aud-filter-btns{display:none;}
 .aud-btn:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
 .article-list li.is-aud-filtered{display:none;}
 .aud-note{max-width:66ch;margin-top:14px;padding:12px 16px;background:var(--light-teal);border-left:3px solid var(--teal);font-size:13.5px;color:var(--gray);border-radius:0 var(--radius) var(--radius) 0;}
+
+/* OnceHub booking widget container */
+.booking-embed{margin:0 0 34px;max-width:760px;}
+.booking-embed noscript p{background:var(--light-teal);border-left:3px solid var(--teal);padding:14px 18px;border-radius:0 var(--radius) var(--radius) 0;}

@@ -148,11 +148,19 @@
         <span class="eyebrow eyebrow--forest">Book directly</span>
         <h2 class="mb-sm">The discovery call.</h2>
         <p class="mb-md measure">Thirty minutes. We learn your situation and what's on your horizon, you learn how the practice works, and we both make an honest fit assessment. No preparation required, though a look through <a href="knowledge-base/index.html">the Knowledge Base</a> for your transition never hurts.</p>
-        <!-- BOOKING LINK PLACEHOLDER:
-             Replace the href below with the live scheduling link (OnceHub).
-             The /work-with-me path is the scheduling URL documented in the brand guide;
-             confirm it is live before launch. -->
-        <p class="mb-lg"><a class="btn btn--solid" href="https://rosefinancialmanagement.com/work-with-me">Book a Discovery Call</a></p>
+        <!-- OnceHub booking calendar, embedded inline (calendar ID BKC-PDX647XD62).
+             Replaces the previous placeholder link to the Squarespace /work-with-me page,
+             which will not exist once DNS points at GitHub Pages.
+             NOTE: this loads a third-party script from cdn.oncehub.com and collects
+             scheduling details directly. The Website Privacy Notice must disclose it. -->
+        <div class="booking-embed">
+          <div data-oh-booking-calendar-id="BKC-PDX647XD62" style="min-width:320px;height:700px;"></div>
+          <noscript>
+            <p>The scheduling calendar needs JavaScript. You can also email
+            <a href="mailto:Kevin@RoseFinancialManagement.com">Kevin@RoseFinancialManagement.com</a>
+            or call <a href="tel:+16282128990">(628) 212-8990</a> to arrange a call.</p>
+          </noscript>
+        </div>
         <ul class="contact-detail">
           <li>
             <span class="lbl">Email</span>
@@ -251,5 +259,6 @@
 </footer>
 
 <script src="js/main.js"></script>
+<script type="text/javascript" src="https://cdn.oncehub.com/cal/embed.js" async></script>
 </body>
 </html>
