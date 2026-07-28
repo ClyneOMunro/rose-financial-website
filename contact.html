@@ -43,7 +43,7 @@
       "logo": "https://rosefinancialmanagement.com/assets/logo-horz-color.jpg",
       "image": "https://rosefinancialmanagement.com/assets/logo-horz-color.jpg",
       "telephone": "+1-628-212-8990",
-      "email": "Kevin@RoseFinancialManagement.com",
+      "email": "Krose@zukfinancial.com",
       "areaServed": {
         "@type": "Country",
         "name": "US"
@@ -154,17 +154,17 @@
              NOTE: this loads a third-party script from cdn.oncehub.com and collects
              scheduling details directly. The Website Privacy Notice must disclose it. -->
         <div class="booking-embed">
-          <div data-oh-booking-calendar-id="BKC-PDX647XD62" style="min-width:320px;height:700px;"></div>
+          <div class="oh-cal" data-oh-booking-calendar-id="BKC-PDX647XD62"></div>
           <noscript>
             <p>The scheduling calendar needs JavaScript. You can also email
-            <a href="mailto:Kevin@RoseFinancialManagement.com">Kevin@RoseFinancialManagement.com</a>
+            <a href="mailto:Krose@zukfinancial.com">Krose@zukfinancial.com</a>
             or call <a href="tel:+16282128990">(628) 212-8990</a> to arrange a call.</p>
           </noscript>
         </div>
         <ul class="contact-detail">
           <li>
             <span class="lbl">Email</span>
-            <a href="mailto:Kevin@RoseFinancialManagement.com">Kevin@RoseFinancialManagement.com</a>
+            <a href="mailto:Krose@zukfinancial.com">Krose@zukfinancial.com</a>
           </li>
           <li>
             <span class="lbl">Phone</span>
@@ -177,39 +177,32 @@
         </ul>
       </div>
       <div>
-        <span class="eyebrow eyebrow--forest">Or send a message</span>
-        <!-- FORM BACKEND PLACEHOLDER:
-             GitHub Pages is static, so this form needs a form service.
-             Recommended: create a Formspree form and replace YOUR_FORM_ID below.
-             Until then, the form falls back to opening an email draft via mailto. -->
-        <form class="form" action="mailto:Kevin@RoseFinancialManagement.com" method="get" enctype="text/plain">
-          <div class="form-field">
-            <label for="f-name">Name</label>
-            <input id="f-name" name="name" type="text" autocomplete="name" required>
-          </div>
-          <div class="form-field">
-            <label for="f-email">Email</label>
-            <input id="f-email" name="email" type="email" autocomplete="email" required>
-          </div>
-          <div class="form-field">
-            <label for="f-situation">Which best describes you</label>
-            <select id="f-situation" name="situation">
-              <option>Active-duty military</option>
-              <option>Transitioning or veteran</option>
-              <option>Airline pilot</option>
-              <option>NIL athlete</option>
-              <option>Military family</option>
-              <option>Business owner</option>
-              <option>Something else</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label for="f-message">What's on your horizon</label>
-            <textarea id="f-message" name="body" placeholder="A sentence or two is plenty."></textarea>
-          </div>
-          <button class="btn btn--ghost-navy" type="submit">Send Message</button>
-          <p class="form-note">Please don't include account numbers or other sensitive personal information in this form. This message goes to email and is not a secure channel for financial data.</p>
-        </form>
+        <span class="eyebrow eyebrow--forest">Or reach out directly</span>
+        <h2 class="mb-sm">Prefer to just email?</h2>
+        <p class="mb-md measure">If a calendar is not what you want right now, write instead. Tell me roughly where you are and what is coming up, a sentence or two is plenty, and I will reply within one business day.</p>
+
+        <!-- The previous version of this block was a form posting to mailto:, which Safari
+             and most modern browsers reject outright ("the address is invalid"), and which
+             can fail silently elsewhere by opening a draft the visitor never sends.
+             A plain mailto LINK is reliable everywhere, so the form was removed.
+             If a real form is wanted later it needs a form backend (Formspree or similar),
+             which receives visitor PII and is therefore a vendor decision requiring CCO
+             review and a privacy-notice update before it ships. -->
+
+        <p class="mb-md"><a class="btn btn--ghost-navy" href="mailto:Krose@zukfinancial.com?subject=Discovery%20call%20inquiry">Email Kevin directly</a></p>
+
+        <ul class="contact-detail">
+          <li>
+            <span class="label">Email</span>
+            <a href="mailto:Krose@zukfinancial.com">Krose@zukfinancial.com</a>
+          </li>
+          <li>
+            <span class="label">Phone</span>
+            <a href="tel:+16282128990">628-212-8990</a>
+          </li>
+        </ul>
+
+        <p class="form-note">Please don't include account numbers or other sensitive personal information in an email. It is not a secure channel for financial data, and nothing of that kind is needed to start a conversation.</p>
       </div>
     </div>
   </div>

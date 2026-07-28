@@ -757,3 +757,10 @@ html:not(.js) .aud-filter-btns{display:none;}
 /* OnceHub booking widget container */
 .booking-embed{margin:0 0 34px;max-width:760px;}
 .booking-embed noscript p{background:var(--light-teal);border-left:3px solid var(--teal);padding:14px 18px;border-radius:0 var(--radius) var(--radius) 0;}
+
+/* OnceHub calendar. The vendor snippet ships a fixed height:700px which clips the
+   time-slot list under the date picker. Height is set here instead so it can be tuned
+   in one place and made responsive. If it still clips, raise these values. */
+.oh-cal{min-width:320px;height:1000px;}
+@media(max-width:900px){.oh-cal{height:1150px;}}
+@media(max-width:600px){.oh-cal{height:1250px;}}
