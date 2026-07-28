@@ -662,6 +662,7 @@ a.kb-card:hover h3{color:var(--forest);}
 .mb-sm{margin-bottom:20px;}
 .center{text-align:center;}
 .measure{max-width:var(--measure);}
+.nowrap{white-space:nowrap;}
 
 /* ============================================================
    v2.2 additions — Loss of a Loved One kit
