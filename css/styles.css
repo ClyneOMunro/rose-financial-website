@@ -765,3 +765,16 @@ html:not(.js) .aud-filter-btns{display:none;}
 .oh-cal{min-width:320px;height:1000px;}
 @media(max-width:900px){.oh-cal{height:1150px;}}
 @media(max-width:600px){.oh-cal{height:1250px;}}
+
+/* Printable packet download band (Loss kit) */
+.download-band{
+  display:flex;align-items:center;justify-content:space-between;gap:26px;
+  background:var(--light-teal);border-left:3px solid var(--teal);
+  padding:24px 28px;margin:0 0 34px;border-radius:0 var(--radius) var(--radius) 0;
+}
+.download-band h3{margin:4px 0 6px;font-size:20px;color:var(--navy);}
+.download-band p{margin:0;max-width:52ch;font-size:14.5px;color:var(--gray);}
+.download-band .btn{flex:0 0 auto;}
+@media(max-width:700px){
+  .download-band{flex-direction:column;align-items:flex-start;gap:16px;padding:20px 22px;}
+}
