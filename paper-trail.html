@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Paper Trail</title>
+<!-- Paper Trail. One self-contained file. Rename to index.html for GitHub Pages if you like. -->
+<style>
+:root{
+  --navy:#0d1c28; --teal:#61c08e; --mint:#addbc2;
+  --forest:#315b51; --sage:#7a9a90; --paper:#f4f7f6;
+}
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0; overflow:hidden; background:var(--navy); color:var(--paper);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-user-select:none; user-select:none; touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+}
+canvas{ display:block; }
+#vignette{ position:fixed; inset:0; pointer-events:none; z-index:2;
+  background:radial-gradient(ellipse at center, transparent 55%, rgba(13,28,40,0.2) 100%); }
+#hud{ position:fixed; inset:0; pointer-events:none; z-index:4; transition:opacity 0.5s ease; }
+#time{ position:fixed; top:20px; left:24px; font-size:27px; font-weight:200;
+  letter-spacing:0.14em; font-variant-numeric:tabular-nums;
+  text-shadow:0 1px 14px rgba(13,28,40,0.7); }
+#time.past{ color:var(--mint); }
+#altwrap{ position:fixed; top:22px; right:26px; width:4px; height:120px;
+  background:rgba(244,247,246,0.16); border-radius:2px; }
+#altfill{ position:absolute; bottom:0; left:0; width:100%; height:50%;
+  background:var(--mint); border-radius:2px; }
+#milestone{ position:fixed; top:16%; left:0; right:0; text-align:center; z-index:4;
+  pointer-events:none; font-size:15px; font-weight:300; letter-spacing:0.3em;
+  text-transform:uppercase; color:var(--mint); opacity:0; transition:opacity 0.9s ease;
+  text-shadow:0 1px 14px rgba(13,28,40,0.8); }
+#milestone.on{ opacity:1; }
+.overlay{ position:fixed; inset:0; z-index:5; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center;
+  transition:opacity 0.6s ease; padding:24px; }
+#o_title{ background:linear-gradient(rgba(13,28,40,0.25), rgba(13,28,40,0.55)); }
+#o_crash{ background:rgba(13,28,40,0.45); }
+.hidden{ opacity:0; pointer-events:none !important; }
+.gone{ display:none !important; }
+h1{ margin:0 0 16px; font-size:clamp(42px,9vw,82px); font-weight:200;
+  letter-spacing:0.42em; text-indent:0.42em;
+  text-shadow:0 2px 24px rgba(13,28,40,0.8); }
+.tagline{ margin:0; font-size:15px; font-weight:300; letter-spacing:0.05em;
+  color:rgba(244,247,246,0.85); }
+.press{ margin-top:40px; font-size:12px; letter-spacing:0.3em; text-transform:uppercase;
+  color:var(--mint); animation:pulse 2.4s ease-in-out infinite; }
+.crashlabel{ margin:0; font-size:11px; letter-spacing:0.34em; text-transform:uppercase;
+  color:var(--sage); }
+.crashtime{ margin:10px 0 0; font-size:52px; font-weight:200; letter-spacing:0.1em;
+  font-variant-numeric:tabular-nums; }
+.card{ pointer-events:auto; background:rgba(13,28,40,0.9);
+  border:1px solid rgba(97,192,142,0.35); border-radius:6px;
+  padding:38px 46px; max-width:440px;
+  box-shadow:0 24px 80px rgba(13,28,40,0.5); }
+.card h2{ margin:0; font-size:29px; font-weight:300; letter-spacing:0.06em; }
+.card .sub{ margin:8px 0 0; font-size:14px; font-style:italic; color:var(--sage); }
+.flightline{ margin:14px 0 0; font-size:12px; letter-spacing:0.22em; text-transform:uppercase;
+  color:rgba(244,247,246,0.7); font-variant-numeric:tabular-nums; }
+.rule{ width:56px; height:1px; margin:20px auto;
+  background:linear-gradient(90deg, transparent, var(--teal), transparent); }
+.offer{ margin:0; font-size:15px; line-height:1.65; font-weight:300; }
+.offer b{ color:var(--teal); letter-spacing:0.12em; font-weight:600; }
+.offer a{ color:var(--mint); text-decoration:none;
+  border-bottom:1px solid rgba(173,219,194,0.4); }
+.logotile{ background:var(--paper); border-radius:10px; padding:9px;
+  width:82px; margin:22px auto 12px; }
+.logotile svg{ display:block; width:100%; height:auto; }
+.brandline{ margin:0; font-size:10.5px; letter-spacing:0.34em; text-transform:uppercase;
+  color:var(--sage); }
+.again{ margin:24px 0 0; font-size:10px; letter-spacing:0.3em; text-transform:uppercase;
+  color:rgba(244,247,246,0.45); }
+.opt{ position:fixed; right:16px; z-index:6; cursor:pointer;
+  background:transparent; border:1px solid rgba(244,247,246,0.25);
+  color:rgba(244,247,246,0.6); border-radius:3px; padding:7px 12px;
+  font-family:inherit; font-size:10px; font-weight:500;
+  letter-spacing:0.18em; text-transform:uppercase; }
+.opt:hover{ color:var(--paper); border-color:rgba(244,247,246,0.5); }
+#snd{ bottom:14px; }
+#inv{ bottom:52px; }
+#tun{ bottom:90px; }
+#tune{ position:fixed; top:64px; left:16px; z-index:7; width:242px;
+  background:rgba(13,28,40,0.92); border:1px solid rgba(97,192,142,0.35);
+  border-radius:6px; padding:16px 18px; pointer-events:auto; }
+.tunehead{ margin:0 0 10px; font-size:11px; letter-spacing:0.28em;
+  text-transform:uppercase; color:var(--mint); }
+.trow{ display:flex; align-items:center; gap:8px; margin:7px 0;
+  font-size:11px; color:rgba(244,247,246,0.8); }
+.trow span{ width:88px; flex:none; }
+.trow b{ width:32px; flex:none; font-weight:500; color:var(--mint);
+  text-align:right; font-variant-numeric:tabular-nums; }
+.trow input{ flex:1; min-width:0; accent-color:var(--teal); }
+.tunenote{ margin:10px 0 0; font-size:10px; line-height:1.5; color:var(--sage); }
+.tbtns{ display:flex; gap:8px; margin-top:12px; }
+.tbtns button{ flex:1; cursor:pointer; background:transparent;
+  border:1px solid rgba(244,247,246,0.25); color:rgba(244,247,246,0.7);
+  border-radius:3px; padding:6px 0; font-family:inherit; font-size:10px;
+  letter-spacing:0.18em; text-transform:uppercase; }
+.tbtns button:hover{ color:var(--paper); border-color:rgba(244,247,246,0.5); }
+@keyframes pulse{ 0%,100%{opacity:0.95;} 50%{opacity:0.4;} }
+#altfill.low{ animation:lowpulse 0.9s ease-in-out infinite; }
+@keyframes lowpulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+@media (max-width:600px){
+  #time{ font-size:20px; top:14px; left:16px; }
+  #altwrap{ top:16px; right:18px; height:90px; }
+  .card{ padding:28px 24px; }
+  h1{ letter-spacing:0.28em; text-indent:0.28em; }
+}
+@media (prefers-reduced-motion: reduce){
+  .press, #altfill.low{ animation:none; }
+}
+</style>
+</head>
+<body>
+
+<div id="vignette"></div>
+
+<div id="hud" class="hidden">
+  <div id="time">0:00</div>
+  <div id="altwrap"><div id="altfill"></div></div>
+</div>
+
+<div id="milestone">Two minutes. Keep flying.</div>
+
+<div id="o_title" class="overlay">
+  <h1>PAPER TRAIL</h1>
+  <p class="tagline">Hit the thermals. Stay up for two minutes.</p>
+  <p class="press" id="titlepress">Press SPACE to fly</p>
+</div>
+
+<div id="o_crash" class="overlay hidden">
+  <div id="crash_plain">
+    <p class="crashlabel">Time survived</p>
+    <p class="crashtime" id="crashtime">0:00</p>
+    <p class="press" id="crashpress">Press SPACE to try again</p>
+  </div>
+  <div id="crash_win" class="card gone">
+    <h2>You made it.</h2>
+    <p class="sub">Two minutes on paper wings.</p>
+    <p class="flightline">This flight: <span id="winflight">2:00</span></p>
+    <div class="rule"></div>
+    <p class="offer">Email <b>PAPERTRAIL</b> to
+      <a href="mailto:krose@zukfinancial.com?subject=PAPERTRAIL">krose@zukfinancial.com</a>
+      and I will send you a Rose Financial t-shirt.</p>
+    <div class="logotile">
+      <svg viewBox="0 0 156.9 156.9" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rose Financial Management">
+        <polygon fill="#addbc2" points="123.9 42.2 88.7 117 105.1 124.1 123.9 42.2"/>
+        <polygon fill="#addbc2" points="114.7 33 32.8 51.9 39.9 68.2 114.7 33"/>
+        <polygon fill="#addbc2" points="85.2 118.4 59.6 107.3 80.5 128.3 85.2 118.4"/>
+        <polygon fill="#addbc2" points="49.6 97.3 38.5 71.7 28.7 76.4 49.6 97.3"/>
+        <polygon fill="#61c08e" points="125 33.7 55.9 102.9 86.3 116 125 33.7"/>
+        <polygon fill="#61c08e" points="54.1 101 123.2 31.9 40.9 70.6 54.1 101"/>
+        <line stroke="#0d1c28" stroke-width="2.3" stroke-linejoin="round" opacity=".5" x1="54.6" y1="102.3" x2="126.7" y2="30.2"/>
+        <path fill="#0d1c28" d="M126.7,30.2l-21.6,93.9-50.4-21.8-21.8-50.4,93.9-21.6M126.7,27.6c-.2,0-.4,0-.6,0l-93.9,21.6c-.8.2-1.4.7-1.7,1.4-.4.7-.4,1.5,0,2.2l21.8,50.4c.3.6.8,1.1,1.4,1.4l50.4,21.8c.3.1.7.2,1,.2s.8,0,1.2-.3c.7-.4,1.2-1,1.4-1.7l21.6-93.9c.2-.9,0-1.8-.7-2.4-.5-.5-1.2-.8-1.8-.8h0Z"/>
+        <path fill="#0d1c28" d="M126.7,30.2l-46.2,98-25.9-26-26-25.9L126.7,30.2M126.7,27.6c-.4,0-.8,0-1.1.2L27.5,74c-.8.4-1.3,1.1-1.5,1.9-.1.8.1,1.7.7,2.3l26,25.9,25.9,26c.5.5,1.2.8,1.9.8s.3,0,.4,0c.8-.1,1.6-.7,1.9-1.5l46.2-98c.5-1,.3-2.2-.5-3s-1.2-.8-1.8-.8h0Z"/>
+        <line stroke="#0d1c28" stroke-width="2.6" stroke-linejoin="round" fill="none" x1="54.6" y1="102.3" x2="126.7" y2="30.2"/>
+      </svg>
+    </div>
+    <p class="brandline">Rose Financial Management</p>
+    <p class="again" id="winpress">space to fly again</p>
+  </div>
+</div>
+
+<div id="tune" class="gone">
+  <p class="tunehead">Flight tuning</p>
+  <div class="trow"><span>Speed</span><input type="range" id="t_spd" min="18" max="36" step="1"><b id="v_spd"></b></div>
+  <div class="trow"><span>Gravity</span><input type="range" id="t_grv" min="1" max="4.5" step="0.1"><b id="v_grv"></b></div>
+  <div class="trow"><span>Thermal lift</span><input type="range" id="t_lft" min="6" max="16" step="0.5"><b id="v_lft"></b></div>
+  <div class="trow"><span>Thermal spacing</span><input type="range" id="t_spc" min="90" max="220" step="5"><b id="v_spc"></b></div>
+  <div class="trow"><span>Canyon width</span><input type="range" id="t_wid" min="20" max="42" step="1"><b id="v_wid"></b></div>
+  <p class="tunenote">Speed, gravity and lift apply right away. Spacing and width take effect on the next flight.</p>
+  <div class="tbtns"><button id="t_reset" type="button">reset</button><button id="t_close" type="button">close</button></div>
+</div>
+
+<button id="tun" class="opt" type="button">tuning</button>
+<button id="inv" class="opt" type="button">pitch: normal</button>
+<button id="snd" class="opt" type="button">sound: off</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+/* ============================================================
+   PAPER TRAIL
+   An endless glide for Rose Financial Management.
+   Two minutes earns the t-shirt. After that, see how far.
+   All the numbers a playtest will want live in TUNE below.
+   ============================================================ */
+
+if (!window.THREE){
+  document.getElementById('o_title').innerHTML =
+    '<p class="tagline">Could not load the 3D library. Check your connection and reload.</p>';
+  throw new Error('THREE missing');
+}
+
+/* ------------------------- TUNING --------------------------- */
+const TUNE = {
+  /* The five knobs the first playtest will reach for */
+  FORWARD_SPEED  : 26,    /* cruise speed, units per second */
+  SINK_RATE      : 2.4,   /* baseline altitude loss at cruise, units per second */
+  THERMAL_LIFT   : 11,    /* average lift inside a thermal, units per second */
+  THERMAL_SPACING: 140,   /* average gap between thermals, units of distance */
+  CANYON_WIDTH   : 30,    /* average wall to wall width, units */
+
+  /* Flight feel */
+  SPEED_MIN: 15, SPEED_MAX: 42,
+  DIVE_ACCEL: 14,         /* speed gained per second at full nose down */
+  CLIMB_BLEED: 9,         /* speed lost per second at full pull up */
+  SPEED_RELAX: 0.55,      /* drift back toward cruise */
+  CLIMB_RATE: 6.5,        /* max climb from pulling up at full speed */
+  DIVE_RATE: 9,           /* extra descent from pushing the nose down */
+  TURN_RATE: 1.6,         /* heading change in rad per second at full bank */
+  HEADING_MAX: 1.0,       /* how far off the canyon axis you can point, rad */
+  BANK_MAX: 0.85,         /* radians of visual bank */
+
+  /* World */
+  RUN_SECONDS: 120,       /* the t-shirt line; the flight itself is endless */
+  RIM_HEIGHT: 24,         /* average wall height above the floor */
+  EASE_SECONDS: 15,       /* the extra starting width fades over this long */
+  EASE_WIDTH_BONUS: 9,
+  EVENT_SPACING: 780,     /* one skill check about every 30 s of cruise */
+  VIEW_DIST: 470,
+  COLLISION_SLACK: 0.45,  /* forgiveness at the walls */
+  FLOOR_MARGIN: 0.35      /* forgiveness at the floor */
+};
+
+/* ------------------------ PALETTE --------------------------- */
+const C_NAVY   = new THREE.Color(0x0d1c28);
+const C_TEAL   = new THREE.Color(0x61c08e);
+const C_MINT   = new THREE.Color(0xaddbc2);
+const C_FOREST = new THREE.Color(0x315b51);
+const C_SAGE   = new THREE.Color(0x7a9a90);
+const C_PAPER  = new THREE.Color(0xf4f7f6);
+
+/* --------------------- SEEDED NOISE ------------------------- */
+let SEED = 0, S = [];
+function reseed(){
+  SEED = Math.random()*1000;
+  S = [];
+  for (let i = 0; i < 12; i++) S.push(Math.random()*Math.PI*2);
+}
+reseed();
+function hash(n){
+  const x = Math.sin(n*127.1 + SEED*13.7)*43758.5453;
+  return x - Math.floor(x);
+}
+const clamp = (v,a,b)=> v<a ? a : (v>b ? b : v);
+const lerp  = (a,b,t)=> a + (b-a)*t;
+const smooth = (a,b,v)=>{ const t = clamp((v-a)/(b-a),0,1); return t*t*(3-2*t); };
+
+/* -------------------- CANYON GEOGRAPHY ---------------------- */
+/* d is distance flown forward. World z = -d. */
+let runStartD = 0;
+
+/* Gentle ramp inside the first two minutes */
+function diffK(d){ return Math.min(1, Math.max(0, d - runStartD)/2800); }
+/* The endless ramp. Zero until the two minute mark, then climbs. */
+function lateK(d){
+  return Math.min(1, Math.max(0, d - (runStartD + TUNE.RUN_SECONDS*TUNE.FORWARD_SPEED))/3400);
+}
+
+/* Skill check slots every EVENT_SPACING. 0 squeeze, 1 arch, 2 pillars. */
+function eventType(k){
+  if (k === 1) return 0;
+  return Math.floor(hash(k*57.31 + 4.2)*3) % 3;
+}
+function squeezeFactor(d){
+  const rel = d - runStartD;
+  const k = Math.round(rel/TUNE.EVENT_SPACING);
+  if (k < 1) return 1;
+  if (eventType(k) !== 0) return 1;
+  const D = runStartD + k*TUNE.EVENT_SPACING;
+  const u = Math.abs(d - D)/95;
+  if (u >= 1) return 1;
+  const bump = 1 - u*u*(3 - 2*u);
+  const depth = 0.42 + 0.12*lateK(d);
+  return 1 - depth*bump;
+}
+
+function centerX(d){
+  return Math.sin(d*0.011 + S[0])*20
+       + Math.sin(d*0.0046 + S[1])*30
+       + Math.sin(d*0.021 + S[2])*7;
+}
+function halfWidth(d){
+  let w = TUNE.CANYON_WIDTH*0.5
+        + Math.sin(d*0.0087 + S[3])*3.6
+        + Math.sin(d*0.023  + S[4])*2.6;
+  const rd = Math.max(0, d - runStartD);
+  w += TUNE.EASE_WIDTH_BONUS * (1 - Math.min(1, rd/(TUNE.FORWARD_SPEED*TUNE.EASE_SECONDS)));
+  w -= 2.2*diffK(d);
+  w -= 3.5*lateK(d);
+  w *= squeezeFactor(d);
+  return Math.max(9.2, w);
+}
+function floorY(d){
+  return Math.sin(d*0.0061 + S[5])*2.6 + Math.sin(d*0.017 + S[6])*1.4;
+}
+function rimHeight(d, side){
+  const h = TUNE.RIM_HEIGHT
+        + Math.sin(d*0.009 + side*2.3 + S[7])*6
+        + Math.sin(d*0.027 + side*1.1 + S[8])*3.5;
+  return Math.max(1.5, h);
+}
+function rimY(d, side){ return floorY(d) + rimHeight(d, side); }
+function groundY(x, d){
+  const c = centerX(d), hw = halfWidth(d);
+  const u = Math.abs(x-c)/(hw + TUNE.COLLISION_SLACK);
+  if (u >= 1) return rimY(d, x < c ? -1 : 1);
+  return floorY(d) + 2.4*Math.pow(u, 2.6);
+}
+
+/* ------------------------ RENDERER -------------------------- */
+const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = C_MINT.clone().lerp(C_PAPER, 0.5);
+scene.fog = new THREE.Fog(C_MINT.clone().lerp(C_PAPER, 0.5), 65, 460);
+
+const camera = new THREE.PerspectiveCamera(62, window.innerWidth/window.innerHeight, 0.1, 1400);
+
+window.addEventListener('resize', function(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ------------------------- LIGHTS --------------------------- */
+const hemi = new THREE.HemisphereLight(0xaddbc2, 0x315b51, 0.85);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xf4f7f6, 1.0);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -120; sun.shadow.camera.right = 120;
+sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
+sun.shadow.camera.near = 5; sun.shadow.camera.far = 380;
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 1.6;
+scene.add(sun);
+scene.add(sun.target);
+const SUN_OFFSET = new THREE.Vector3(62, 52, 96); /* low sun, long shadows down the canyon */
+
+/* --------------------------- SKY ---------------------------- */
+const sky = (function(){
+  const geo = new THREE.SphereGeometry(820, 24, 16);
+  const posA = geo.attributes.position;
+  const cols = new Float32Array(posA.count*3);
+  const horizon = C_PAPER.clone().lerp(C_MINT, 0.42);
+  const zenith = C_TEAL.clone().lerp(C_MINT, 0.18);
+  const below = C_SAGE.clone().lerp(C_FOREST, 0.45);
+  const tone = new THREE.Color();
+  for (let i = 0; i < posA.count; i++){
+    const ny = posA.getY(i)/820;
+    tone.copy(horizon).lerp(zenith, smooth(0.02, 0.5, ny));
+    if (ny < 0) tone.lerp(below, clamp(-ny*2.2, 0, 1));
+    cols[i*3] = tone.r; cols[i*3+1] = tone.g; cols[i*3+2] = tone.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    vertexColors:true, side:THREE.BackSide, fog:false, depthWrite:false }));
+  m.renderOrder = -1;
+  m.frustumCulled = false;
+  scene.add(m);
+  return m;
+})();
+
+/* ------------------- CANVAS DRAWN TEXTURES ------------------ */
+/* Pilotwings style updraft bands. The texture scrolls so the
+   rings appear to rise up the column.                           */
+function makeThermalBandTex(){
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256;
+  const g = c.getContext('2d');
+  for (let y = 0; y < 256; y++){
+    const band = 0.34 + 0.66*Math.pow(0.5 + 0.5*Math.sin(y*Math.PI*2*5/256), 1.7);
+    for (let x = 0; x < 64; x += 4){
+      const streak = 0.84 + 0.16*Math.sin(x*0.55 + y*0.02);
+      g.fillStyle = 'rgba(255,255,255,' + (band*streak).toFixed(3) + ')';
+      g.fillRect(x, y, 4, 1);
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+/* Sandy grain. Multiplies under the vertex colors on rock and floor. */
+function makeSandTex(){
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 46; i++){
+    const x = Math.random()*256, y = Math.random()*256, r = 18 + Math.random()*46;
+    const dark = Math.random() < 0.55;
+    const rg = g.createRadialGradient(x, y, 0, x, y, r);
+    const a = 0.03 + Math.random()*0.05;
+    rg.addColorStop(0, dark ? 'rgba(30,40,50,' + a.toFixed(3) + ')'
+                            : 'rgba(255,255,255,' + a.toFixed(3) + ')');
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = rg;
+    g.fillRect(x - r, y - r, r*2, r*2);
+  }
+  for (let i = 0; i < 9000; i++){
+    const a = 0.02 + Math.random()*0.13;
+    g.fillStyle = (Math.random() < 0.6)
+      ? 'rgba(25,35,45,' + a.toFixed(3) + ')'
+      : 'rgba(255,255,255,' + (a*0.8).toFixed(3) + ')';
+    g.fillRect(Math.random()*256, Math.random()*256, 1 + (Math.random()<0.2?1:0), 1);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+const bandTex = makeThermalBandTex(), sandTex = makeSandTex();
+
+/* ------------------------ MATERIALS ------------------------- */
+const canyonMat = new THREE.MeshLambertMaterial({ vertexColors:true, map:sandTex });
+const vegMat = new THREE.MeshLambertMaterial({ vertexColors:true, side:THREE.DoubleSide });
+const thermMat = new THREE.MeshBasicMaterial({ color:C_MINT.clone().lerp(C_TEAL, 0.35),
+  map:bandTex, transparent:true, opacity:0.34, blending:THREE.AdditiveBlending,
+  depthWrite:false, side:THREE.DoubleSide, fog:false, vertexColors:true });
+const planeMintMat = new THREE.MeshLambertMaterial({ color:C_MINT,
+  emissive:C_MINT.clone().multiplyScalar(0.28) });
+const planeTealMat = new THREE.MeshLambertMaterial({ color:C_TEAL,
+  emissive:C_TEAL.clone().multiplyScalar(0.24) });
+const planeUnderMat = new THREE.MeshLambertMaterial({ color:C_TEAL.clone().lerp(C_FOREST, 0.35),
+  emissive:C_TEAL.clone().multiplyScalar(0.10) });
+const planeLineMat = new THREE.LineBasicMaterial({ color:C_NAVY });
+const planeRidgeMat = new THREE.MeshBasicMaterial({ color:C_NAVY });
+const scrapMatA = new THREE.MeshLambertMaterial({ color:C_MINT, side:THREE.DoubleSide });
+const scrapMatB = new THREE.MeshLambertMaterial({ color:C_TEAL, side:THREE.DoubleSide });
+const birdMat = new THREE.MeshBasicMaterial({ color:C_NAVY.clone().lerp(C_FOREST, 0.35), side:THREE.DoubleSide });
+
+/* ---------------------- CANYON CHUNKS ----------------------- */
+const CHUNK_LEN = 60, ROWS = 10, WALL_RINGS = 4;
+const chunks = new Map();
+const tmpC = new THREE.Color();
+const tmpC2 = new THREE.Color();
+
+function rowProfile(d){
+  const c = centerX(d), hw = halfWidth(d), fl = floorY(d);
+  const sides = [];
+  for (let s = 0; s < 2; s++){
+    const side = s === 0 ? -1 : 1;
+    const rim = rimY(d, side);
+    const baseY = fl + 2.4;
+    const span = Math.max(1, rim - baseY);
+    const arr = [];
+    let out = 0;
+    for (let t = 0; t <= WALL_RINGS; t++){
+      const f = t/WALL_RINGS;
+      if (t > 0) out += 0.4 + hash(d*3.17 + t*17.7 + side*57.3)*2.4*(0.4 + f);
+      let y = baseY + span*(f*0.85 + 0.15*f*f);
+      if (t > 0 && t < WALL_RINGS) y += (hash(d*1.71 + t*29.1 + side*11.9) - 0.5)*span*0.10;
+      arr.push({ x: c + side*(hw + out), y: y });
+    }
+    for (let t = 1; t < arr.length; t++)
+      if (arr[t].y < arr[t-1].y + 0.4) arr[t].y = arr[t-1].y + 0.4;
+    arr[arr.length-1].y = rim;
+    const hm = hash(d*2.31 + side*91.7);
+    arr.push({ x: c + side*(hw + out + 30 + hm*14), y: rim + 1.2 + hm*2.5 });
+    sides.push(arr);
+  }
+  return { d:d, c:c, hw:hw, fl:fl, sides:sides };
+}
+
+/* Sun drenched sandstone, banded, only a little shade at the base. */
+function wallColor(out, isMesa, f, y, key){
+  if (isMesa){
+    out.copy(C_SAGE).lerp(C_PAPER, 0.42);
+    out.lerp(C_FOREST, hash(key*1.7)*0.16);
+  } else {
+    out.copy(C_FOREST).lerp(C_SAGE, 0.30 + 0.60*f);
+    out.lerp(C_PAPER, 0.36*f*f);
+    const band = 0.5 + 0.5*Math.sin(y*0.55 + hash(key*0.313)*1.5);
+    out.lerp(C_PAPER, 0.12*band*f);
+    out.lerp(C_NAVY, 0.05*(1 - band));
+    out.lerp(C_NAVY, 0.12*(1 - f));
+  }
+  out.multiplyScalar(0.95 + hash(key)*0.10);
+}
+/* Sandy wash down the middle, bright green scrub at the margins. */
+const C_SCRUB = C_FOREST.clone().lerp(C_TEAL, 0.35);
+function floorColor(out, kmid, key){
+  const t = Math.abs(kmid);
+  out.copy(C_SAGE).lerp(C_PAPER, 0.42*(1 - t));
+  out.lerp(C_SCRUB, 0.10 + 0.48*t);
+  out.lerp(C_NAVY, 0.04);
+  out.multiplyScalar(0.95 + hash(key)*0.10);
+}
+
+/* Shared triangle pusher: position, planar uv, one color per face. */
+function facePush(pos, uv, col, ax,ay,az, bx,by,bz, cx,cy,cz){
+  pos.push(ax,ay,az, bx,by,bz, cx,cy,cz);
+  uv.push(ax*0.09 + az*0.021, ay*0.13 + az*0.047,
+          bx*0.09 + bz*0.021, by*0.13 + bz*0.047,
+          cx*0.09 + cz*0.021, cy*0.13 + cz*0.047);
+  for (let k = 0; k < 3; k++) col.push(tmpC.r, tmpC.g, tmpC.b);
+}
+function finishRock(pos, uv, col){
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, canyonMat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+/* Grass tufts, shrubs and small rocks scattered per chunk. */
+function buildVegetation(ci){
+  const pos = [], col = [];
+  function bladeTri(x1,y1,z1, x2,y2,z2, tx,ty,tz, cBase, cTip){
+    pos.push(x1,y1,z1, x2,y2,z2, tx,ty,tz);
+    col.push(cBase.r,cBase.g,cBase.b, cBase.r,cBase.g,cBase.b, cTip.r,cTip.g,cTip.b);
+  }
+  const d0 = ci*CHUNK_LEN;
+  const tufts = 24, bushes = 7, rocks = 5;
+  for (let n = 0; n < tufts; n++){
+    const key = ci*97.7 + n*7.13;
+    const dd = d0 + hash(key)*CHUNK_LEN;
+    const sgn = hash(key + 1) < 0.5 ? -1 : 1;
+    const k = sgn*(0.34 + 0.62*Math.pow(hash(key + 2), 0.7));
+    const kk = clamp(k, -0.97, 0.97);
+    const bx = centerX(dd) + halfWidth(dd)*kk;
+    const by = floorY(dd) + 2.4*Math.pow(Math.abs(kk), 2.6);
+    const bz = -dd;
+    const blades = 4 + Math.floor(hash(key + 3)*3);
+    for (let b = 0; b < blades; b++){
+      const bk = key + 10 + b*3.31;
+      const ang = hash(bk)*Math.PI*2;
+      const len = 0.7 + hash(bk + 1)*0.9;
+      const leanR = (0.2 + hash(bk + 2)*0.4)*len;
+      const px = Math.cos(ang + 1.5708), pz = Math.sin(ang + 1.5708);
+      const w = 0.05 + hash(bk + 3)*0.04;
+      tmpC.copy(C_FOREST).lerp(C_NAVY, 0.25).multiplyScalar(0.9 + hash(bk + 4)*0.2);
+      tmpC2.copy(C_TEAL).lerp(C_MINT, hash(bk + 5)).multiplyScalar(0.85 + hash(bk + 6)*0.25);
+      bladeTri(bx + px*w, by, bz + pz*w,
+               bx - px*w, by, bz - pz*w,
+               bx + Math.cos(ang)*leanR, by + len, bz + Math.sin(ang)*leanR,
+               tmpC, tmpC2);
+    }
+  }
+  for (let n = 0; n < bushes; n++){
+    const key = ci*61.3 + n*11.71 + 400;
+    const dd = d0 + hash(key)*CHUNK_LEN;
+    const sgn = hash(key + 1) < 0.5 ? -1 : 1;
+    const kk = clamp(sgn*(0.45 + 0.5*hash(key + 2)), -0.95, 0.95);
+    const bx = centerX(dd) + halfWidth(dd)*kk;
+    const by = floorY(dd) + 2.4*Math.pow(Math.abs(kk), 2.6);
+    const bz = -dd;
+    const R = 0.45 + hash(key + 3)*0.7;
+    tmpC.copy(C_FOREST).lerp(C_TEAL, 0.2 + hash(key + 4)*0.3).multiplyScalar(0.85 + hash(key + 5)*0.25);
+    const tip = tmpC2.copy(tmpC).lerp(C_MINT, 0.3);
+    for (let f = 0; f < 6; f++){
+      const a1 = hash(key + 10 + f)*Math.PI*2;
+      const a2 = a1 + 1.3 + hash(key + 16 + f)*1.2;
+      bladeTri(bx + Math.cos(a1)*R, by + hash(key+22+f)*0.2, bz + Math.sin(a1)*R,
+               bx + Math.cos(a2)*R, by + hash(key+28+f)*0.2, bz + Math.sin(a2)*R,
+               bx + (hash(key+34+f)-0.5)*R*0.6, by + R*(0.8 + hash(key+40+f)*0.5),
+               bz + (hash(key+46+f)-0.5)*R*0.6,
+               tmpC, tip);
+    }
+  }
+  for (let n = 0; n < rocks; n++){
+    const key = ci*43.9 + n*17.29 + 900;
+    const dd = d0 + hash(key)*CHUNK_LEN;
+    const kk = clamp((hash(key + 1)*2 - 1)*0.9, -0.92, 0.92);
+    const bx = centerX(dd) + halfWidth(dd)*kk;
+    const by = floorY(dd) + 2.4*Math.pow(Math.abs(kk), 2.6);
+    const bz = -dd;
+    const R = 0.3 + hash(key + 2)*0.6;
+    tmpC.copy(C_SAGE).lerp(C_PAPER, hash(key + 3)*0.3).multiplyScalar(0.85 + hash(key + 4)*0.2);
+    tmpC2.copy(tmpC).multiplyScalar(0.8);
+    for (let f = 0; f < 3; f++){
+      const a1 = (f/3)*Math.PI*2, a2 = ((f + 1)/3)*Math.PI*2;
+      bladeTri(bx + Math.cos(a1)*R, by, bz + Math.sin(a1)*R,
+               bx + Math.cos(a2)*R, by, bz + Math.sin(a2)*R,
+               bx + (hash(key+8+f)-0.5)*R*0.4, by + R*(0.7 + hash(key+12+f)*0.4),
+               bz + (hash(key+16+f)-0.5)*R*0.4,
+               tmpC2, tmpC);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, vegMat);
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function buildChunk(ci){
+  const pos = [], uv = [], col = [];
+  const rows = [];
+  for (let r = 0; r <= ROWS; r++) rows.push(rowProfile(ci*CHUNK_LEN + r*(CHUNK_LEN/ROWS)));
+
+  const FK = [-1, -0.55, -0.22, 0.22, 0.55, 1];
+  for (let r = 0; r < ROWS; r++){
+    const A = rows[r], B = rows[r+1], za = -A.d, zb = -B.d;
+    for (let s = 0; s < 2; s++){
+      const a = A.sides[s], b = B.sides[s];
+      for (let t = 0; t < a.length - 1; t++){
+        const isMesa = (t === a.length - 2);
+        wallColor(tmpC, isMesa, (t + 0.5)/WALL_RINGS, a[t].y, A.d*1.7 + t*13.1 + s*7.7);
+        const p00 = a[t], p01 = a[t+1], p10 = b[t], p11 = b[t+1];
+        if (s === 0){
+          facePush(pos,uv,col, p00.x,p00.y,za, p10.x,p10.y,zb, p01.x,p01.y,za);
+          facePush(pos,uv,col, p10.x,p10.y,zb, p11.x,p11.y,zb, p01.x,p01.y,za);
+        } else {
+          facePush(pos,uv,col, p00.x,p00.y,za, p01.x,p01.y,za, p10.x,p10.y,zb);
+          facePush(pos,uv,col, p01.x,p01.y,za, p11.x,p11.y,zb, p10.x,p10.y,zb);
+        }
+      }
+    }
+    for (let k = 0; k < FK.length - 1; k++){
+      floorColor(tmpC, (FK[k] + FK[k+1])/2, A.d*2.3 + k*9.1);
+      const q00x = A.c + A.hw*FK[k],   q00y = A.fl + 2.4*Math.pow(Math.abs(FK[k]), 2.6);
+      const q01x = A.c + A.hw*FK[k+1], q01y = A.fl + 2.4*Math.pow(Math.abs(FK[k+1]), 2.6);
+      const q10x = B.c + B.hw*FK[k],   q10y = B.fl + 2.4*Math.pow(Math.abs(FK[k]), 2.6);
+      const q11x = B.c + B.hw*FK[k+1], q11y = B.fl + 2.4*Math.pow(Math.abs(FK[k+1]), 2.6);
+      facePush(pos,uv,col, q00x,q00y,za, q01x,q01y,za, q10x,q10y,zb);
+      facePush(pos,uv,col, q01x,q01y,za, q11x,q11y,zb, q10x,q10y,zb);
+    }
+  }
+  const mesh = finishRock(pos, uv, col);
+  mesh.add(buildVegetation(ci));
+  scene.add(mesh);
+  return mesh;
+}
+
+function disposeChunkMesh(m){
+  scene.remove(m);
+  for (const c of m.children) c.geometry.dispose();
+  m.geometry.dispose();
+}
+function ensureChunks(dFocus){
+  const i0 = Math.max(0, Math.floor((dFocus - 90)/CHUNK_LEN));
+  const i1 = Math.floor((dFocus + TUNE.VIEW_DIST)/CHUNK_LEN) + 1;
+  for (const entry of chunks){
+    const i = entry[0], m = entry[1];
+    if (i < i0 || i > i1){ disposeChunkMesh(m); chunks.delete(i); }
+  }
+  for (let i = i0; i <= i1; i++) if (!chunks.has(i)) chunks.set(i, buildChunk(i));
+}
+function disposeChunks(){
+  for (const entry of chunks){ disposeChunkMesh(entry[1]); chunks.delete(entry[0]); }
+}
+
+/* ----------------------- SKILL CHECKS ----------------------- */
+/* Squeezes are analytic. Arches and pillars are meshes with
+   simple collision records checked in updateFlight.             */
+let obstacles = [];
+let nextEventK = 1;
+
+function makeArch(D){
+  const c = centerX(D), hw = halfWidth(D), fl = floorY(D);
+  const underY = fl + 9.5 - 1.5*lateK(D);
+  const topY = fl + 20;
+  const pos = [], uv = [], col = [];
+  function jbox(x0, x1, y0, y1, z0, z1, key){
+    /* Irregular box: eight jittered corners, twelve triangles */
+    const j = function(v, kk){ return v + (hash(key + kk)-0.5)*0.8; };
+    const v = [
+      [j(x0,1), j(y0,2), j(z0,3)], [j(x1,4), j(y0,5), j(z0,6)],
+      [j(x1,7), j(y1,8), j(z0,9)], [j(x0,10), j(y1,11), j(z0,12)],
+      [j(x0,13), j(y0,14), j(z1,15)], [j(x1,16), j(y0,17), j(z1,18)],
+      [j(x1,19), j(y1,20), j(z1,21)], [j(x0,22), j(y1,23), j(z1,24)]
+    ];
+    const faces = [
+      [0,2,1],[0,3,2], [4,5,6],[4,6,7],
+      [0,1,5],[0,5,4], [3,6,2],[3,7,6],
+      [0,7,3],[0,4,7], [1,2,6],[1,6,5]
+    ];
+    for (let f = 0; f < faces.length; f++){
+      const fy = (v[faces[f][0]][1] + v[faces[f][1]][1] + v[faces[f][2]][1])/3;
+      wallColor(tmpC, false, clamp((fy - fl)/22, 0.1, 1), fy, key*2.1 + f*3.7);
+      const A = v[faces[f][0]], B = v[faces[f][1]], C = v[faces[f][2]];
+      facePush(pos,uv,col, A[0],A[1],A[2], B[0],B[1],B[2], C[0],C[1],C[2]);
+    }
+  }
+  const zc = -D;
+  jbox(c - hw - 2.5, c + hw + 2.5, underY, topY, zc - 2, zc + 2, D*0.71);           /* lintel */
+  jbox(c - hw - 0.6, c - hw + 2.6, fl - 1.5, underY + 0.6, zc - 2, zc + 2, D*1.31); /* left leg */
+  jbox(c + hw - 2.6, c + hw + 0.6, fl - 1.5, underY + 0.6, zc - 2, zc + 2, D*1.93); /* right leg */
+  const mesh = finishRock(pos, uv, col);
+  scene.add(mesh);
+  obstacles.push({ kind:'arch', d:D, underY:underY, topY:topY,
+    legL: c - hw + 0.9, legR: c + hw - 0.9, mesh:mesh });
+}
+
+function makePillars(D){
+  const c = centerX(D), hw = halfWidth(D), fl = floorY(D);
+  const topY = Math.max(rimY(D,-1), rimY(D,1)) + 3;
+  const count = lateK(D) > 0.55 ? 3 : 2;
+  const slots = count === 2
+    ? [-0.42 + (hash(D*0.37)-0.5)*0.14, 0.40 + (hash(D*0.61)-0.5)*0.14]
+    : [-0.55, 0.02 + (hash(D*0.61)-0.5)*0.1, 0.56];
+  const pos = [], uv = [], col = [];
+  const xs = [];
+  for (let p = 0; p < slots.length; p++){
+    const px = c + hw*slots[p];
+    xs.push(px);
+    const R = 2.0 + hash(D*0.93 + p*7)*0.7;
+    const yb = fl - 1, ym = fl + (topY - fl)*0.55, yt = topY;
+    const NSEG = 6;
+    function ring(y, r, key){
+      const a = [];
+      for (let i = 0; i < NSEG; i++){
+        const ang = (i/NSEG)*Math.PI*2;
+        const rr = r*(0.85 + hash(key + i*3.1)*0.3);
+        a.push([px + Math.cos(ang)*rr, y, -D + Math.sin(ang)*rr]);
+      }
+      return a;
+    }
+    const r0 = ring(yb, R*1.15, D + p*31 + 1);
+    const r1 = ring(ym, R,      D + p*31 + 2);
+    const r2 = ring(yt, R*0.72, D + p*31 + 3);
+    function band(lo, hi, key){
+      for (let i = 0; i < NSEG; i++){
+        const i2 = (i + 1) % NSEG;
+        const fy = (lo[i][1] + hi[i][1])/2;
+        wallColor(tmpC, false, clamp((fy - fl)/(topY - fl), 0.05, 1), fy, key + i*5.3);
+        facePush(pos,uv,col, lo[i][0],lo[i][1],lo[i][2], lo[i2][0],lo[i2][1],lo[i2][2], hi[i][0],hi[i][1],hi[i][2]);
+        facePush(pos,uv,col, lo[i2][0],lo[i2][1],lo[i2][2], hi[i2][0],hi[i2][1],hi[i2][2], hi[i][0],hi[i][1],hi[i][2]);
+      }
+    }
+    band(r0, r1, D*3.1 + p*17);
+    band(r1, r2, D*4.7 + p*17);
+    wallColor(tmpC, true, 1, yt, D*5.9 + p*17);
+    for (let i = 1; i < NSEG - 1; i++){
+      facePush(pos,uv,col, r2[0][0],r2[0][1],r2[0][2], r2[i][0],r2[i][1],r2[i][2], r2[i+1][0],r2[i+1][1],r2[i+1][2]);
+    }
+  }
+  const mesh = finishRock(pos, uv, col);
+  scene.add(mesh);
+  obstacles.push({ kind:'pillars', d:D, xs:xs, r:2.7, topY:topY, mesh:mesh });
+}
+
+function spawnEventsTo(dMax){
+  while (runStartD + nextEventK*TUNE.EVENT_SPACING < dMax){
+    const k = nextEventK++;
+    const D = runStartD + k*TUNE.EVENT_SPACING;
+    const ty = eventType(k);
+    if (ty === 1) makeArch(D);
+    else if (ty === 2) makePillars(D);
+    /* type 0 is a squeeze, already baked into halfWidth */
+  }
+}
+function clearObstacles(){
+  for (const o of obstacles){ scene.remove(o.mesh); o.mesh.geometry.dispose(); }
+  obstacles = [];
+}
+function updateObstacles(dFocus){
+  for (let i = obstacles.length - 1; i >= 0; i--){
+    if (obstacles[i].d < dFocus - 70){
+      scene.remove(obstacles[i].mesh);
+      obstacles[i].mesh.geometry.dispose();
+      obstacles.splice(i, 1);
+    }
+  }
+}
+
+/* ------------------------ THERMALS -------------------------- */
+const unitThermGeo = (function(){
+  const g = new THREE.CylinderGeometry(1, 1.06, 1, 18, 10, true);
+  const pa = g.attributes.position;
+  const rgba = new Float32Array(pa.count*4);
+  for (let i = 0; i < pa.count; i++){
+    const t = pa.getY(i) + 0.5;
+    let a = smooth(0, 0.10, t);
+    a *= 1 - smooth(0.72, 1, t);
+    rgba[i*4] = 1; rgba[i*4+1] = 1; rgba[i*4+2] = 1; rgba[i*4+3] = a;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(rgba, 4));
+  return g;
+})();
+let thermals = [];
+let nextThermalD = 0, friendly = 0;
+
+function makeThermal(d){
+  let R, str, xoff;
+  const h1 = hash(d*0.531), h2 = hash(d*0.257 + 9), h3 = hash(d*0.733 + 33);
+  if (friendly > 0){
+    friendly--;
+    R = 8 + h1*2.5;
+    str = TUNE.THERMAL_LIFT*1.05;
+    xoff = (h2 - 0.5)*0.35;
+  } else {
+    R = (3.6 + h1*4.6)*(1 - 0.12*lateK(d));
+    str = lerp(TUNE.THERMAL_LIFT*1.30, TUNE.THERMAL_LIFT*0.85, (R - 3.6)/4.6)*(0.9 + 0.2*h3);
+    xoff = (h2 - 0.5)*1.5;
+  }
+  const c = centerX(d), hw = halfWidth(d), fl = floorY(d);
+  const x = c + clamp(xoff, -1, 1)*Math.max(0, hw - R*0.5 - 1.6);
+  const topY = Math.max(rimY(d,-1), rimY(d,1)) + 9;
+  const baseY = fl - 1;
+  const H = topY - baseY;
+  const elong = 2.1 + h3*1.1;
+
+  const mesh = new THREE.Mesh(unitThermGeo, thermMat);
+  mesh.scale.set(R, H, R*elong);
+  mesh.position.set(x, baseY + H/2, -d);
+  mesh.renderOrder = 2;
+  scene.add(mesh);
+  thermals.push({ d:d, x:x, R:R, elong:elong, str:str, baseY:baseY, topY:topY, mesh:mesh });
+}
+
+function spawnThermalsTo(dMax){
+  while (nextThermalD < dMax){
+    /* keep thermals clear of the skill check slots */
+    const slot = Math.round((nextThermalD - runStartD)/TUNE.EVENT_SPACING);
+    if (slot >= 1){
+      const D = runStartD + slot*TUNE.EVENT_SPACING;
+      if (Math.abs(nextThermalD - D) < 55) nextThermalD = D + 57;
+    }
+    makeThermal(nextThermalD);
+    const g = TUNE.THERMAL_SPACING*lerp(0.75, 1.22, hash(nextThermalD*0.77));
+    nextThermalD += g*(1 + 0.22*diffK(nextThermalD))*(1 + 0.45*lateK(nextThermalD));
+  }
+}
+function clearThermals(){
+  for (const t of thermals) scene.remove(t.mesh);
+  thermals = [];
+}
+function updateThermals(dFocus){
+  for (let i = thermals.length - 1; i >= 0; i--){
+    if (thermals[i].d < dFocus - 70){
+      scene.remove(thermals[i].mesh);
+      thermals.splice(i, 1);
+    }
+  }
+}
+
+/* ------------------------ THE PLANE ------------------------- */
+function triGeo(verts){
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  g.computeVertexNormals();
+  return g;
+}
+const plane = (function(){
+  /* Two tone wings and navy fold lines, matching the logo mark. */
+  const N = [0, 0.02, -1.5], C = [0, 0.20, 1.05];
+  const WL = [-1.08, 0.16, 0.92], WR = [1.08, 0.16, 0.92];
+  const KL = [-0.07, -0.17, 1.05], KR = [0.07, -0.17, 1.05];
+  const topL = [].concat(N, WL, C);
+  const topR = [].concat(N, C, WR);
+  const under = [].concat(N, KL, WL,  N, WR, KR,  N, KR, KL,  C, WL, KL,  C, KR, WR);
+  const g = new THREE.Group();
+  const mL = new THREE.Mesh(triGeo(topL), planeTealMat);
+  const mR = new THREE.Mesh(triGeo(topR), planeMintMat);
+  const mU = new THREE.Mesh(triGeo(under), planeUnderMat);
+  for (const m of [mL, mR, mU]){
+    m.castShadow = true;
+    g.add(m);
+    g.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), planeLineMat));
+  }
+  const ridge = new THREE.Mesh(triGeo([].concat(
+    [-0.055, 0.06, -1.46], [0.055, 0.06, -1.46], [0.055, 0.235, 1.06],
+    [-0.055, 0.06, -1.46], [0.055, 0.235, 1.06], [-0.055, 0.235, 1.06]
+  )), planeRidgeMat);
+  g.add(ridge);
+  g.rotation.order = 'YXZ';
+  scene.add(g);
+  return g;
+})();
+plane.visible = false;
+
+/* --------------------- BIRDS AND LEAVES --------------------- */
+const wingGeo = triGeo([0,0,0, 1,0.02,0.16, 0,0,0.46]);
+const birds = [];
+for (let i = 0; i < 4; i++){
+  const b = new THREE.Group();
+  const wl = new THREE.Mesh(wingGeo, birdMat); wl.scale.x = -1;
+  const wr = new THREE.Mesh(wingGeo, birdMat);
+  b.add(wl); b.add(wr);
+  b.scale.setScalar(1.6);
+  scene.add(b);
+  birds.push({ g:b, wl:wl, wr:wr,
+    dOff: 200 + Math.random()*220,
+    x: (Math.random() - 0.5)*90,
+    y: 34 + Math.random()*22,
+    drift: (Math.random() - 0.5)*3,
+    flap: Math.random()*Math.PI*2,
+    rate: 5 + Math.random()*3 });
+}
+const leafGeo = new THREE.PlaneGeometry(0.55, 0.4);
+const leafMatA = new THREE.MeshLambertMaterial({ color:C_TEAL.clone().lerp(C_MINT, 0.35), side:THREE.DoubleSide });
+const leafMatB = new THREE.MeshLambertMaterial({ color:C_MINT.clone(), side:THREE.DoubleSide });
+const leaves = [];
+for (let i = 0; i < 10; i++){
+  const m = new THREE.Mesh(leafGeo, i % 2 ? leafMatA : leafMatB);
+  scene.add(m);
+  leaves.push({ m:m, d:0, x:0, y:0, fall:0,
+    sway: Math.random()*Math.PI*2,
+    rx: (Math.random() - 0.5)*4,
+    rz: (Math.random() - 0.5)*4,
+    live:false });
+}
+function respawnLeaf(L, dFocus){
+  const d = dFocus + 40 + Math.random()*260;
+  const c = centerX(d), hw = halfWidth(d), fl = floorY(d);
+  L.d = d;
+  L.x = c + (Math.random() - 0.5)*1.6*hw*0.8;
+  L.y = fl + 4 + Math.random()*(TUNE.RIM_HEIGHT - 2);
+  L.fall = 0.7 + Math.random()*0.9;
+  L.live = true;
+}
+function updateAmbient(dt, dFocus){
+  for (const b of birds){
+    b.flap += dt*b.rate;
+    const fl = Math.sin(b.flap)*0.75;
+    b.wl.rotation.z = -fl;
+    b.wr.rotation.z = fl;
+    b.x += b.drift*dt;
+    b.dOff -= dt*1.5;
+    if (b.dOff < 120){
+      b.dOff = 300 + Math.random()*180;
+      b.x = (Math.random() - 0.5)*110;
+      b.y = 32 + Math.random()*24;
+      b.drift = (Math.random() - 0.5)*3;
+    }
+    const bd = dFocus + b.dOff;
+    b.g.position.set(centerX(bd)*0.6 + b.x, floorY(bd) + b.y, -bd);
+  }
+  for (const L of leaves){
+    if (!L.live){ respawnLeaf(L, dFocus); continue; }
+    L.y -= L.fall*dt;
+    L.sway += dt*1.3;
+    L.x += Math.sin(L.sway)*dt*1.1;
+    L.m.rotation.x += L.rx*dt;
+    L.m.rotation.z += L.rz*dt;
+    L.m.position.set(L.x, L.y, -L.d);
+    if (L.y < floorY(L.d) + 1 || L.d < dFocus - 30) L.live = false;
+  }
+}
+
+/* ----------------------- CRASH SCRAPS ----------------------- */
+const scrapGeo = triGeo([-0.28,0,0, 0.32,0,0.1, 0,0,0.38]);
+let scraps = [];
+function burstScraps(x, y, z, vx, vz){
+  for (let i = 0; i < 14; i++){
+    const m = new THREE.Mesh(scrapGeo, i % 3 ? scrapMatA : scrapMatB);
+    m.position.set(x, y, z);
+    scene.add(m);
+    const a = Math.random()*Math.PI*2, e = (Math.random() - 0.5)*Math.PI;
+    const sp = 3 + Math.random()*6;
+    scraps.push({ m:m,
+      vx: vx*0.35 + Math.cos(a)*Math.cos(e)*sp,
+      vy: Math.abs(Math.sin(e))*sp*0.8 + 1,
+      vz: vz*0.35 + Math.sin(a)*Math.cos(e)*sp,
+      rx: (Math.random() - 0.5)*10,
+      rz: (Math.random() - 0.5)*10,
+      life: 0 });
+  }
+}
+function updateScraps(dt){
+  for (const sc of scraps){
+    sc.life += dt;
+    sc.vy -= 4.5*dt;
+    sc.vx *= 0.995; sc.vz *= 0.995;
+    sc.m.position.x += sc.vx*dt;
+    sc.m.position.y += sc.vy*dt;
+    sc.m.position.z += sc.vz*dt;
+    sc.m.rotation.x += sc.rx*dt;
+    sc.m.rotation.z += sc.rz*dt;
+    if (sc.life > 0.7){
+      const s = Math.max(0.001, 1 - (sc.life - 0.7)/0.6);
+      sc.m.scale.setScalar(s);
+    }
+  }
+  scraps = scraps.filter(function(sc){
+    if (sc.life > 1.35){ scene.remove(sc.m); return false; }
+    return true;
+  });
+}
+function clearScraps(){
+  for (const sc of scraps) scene.remove(sc.m);
+  scraps = [];
+}
+
+/* -------------------------- INPUT --------------------------- */
+const keys = {};
+let invertY = false;
+const HANDLED = ['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD'];
+window.addEventListener('keydown', function(e){
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (HANDLED.indexOf(e.code) >= 0) e.preventDefault();
+  keys[e.code] = true;
+  if (e.code === 'Space' && !e.repeat) onAction();
+  if (e.code === 'KeyT' && !e.repeat) toggleTune();
+});
+window.addEventListener('keyup', function(e){ keys[e.code] = false; });
+
+let touchActive = false, tox = 0, toy = 0, tdx = 0, tdy = 0, touchMoved = false, touchOnUI = false;
+const IS_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+window.addEventListener('touchstart', function(e){
+  const t = e.touches[0];
+  tox = t.clientX; toy = t.clientY;
+  touchActive = true; touchMoved = false; tdx = 0; tdy = 0;
+  touchOnUI = !!(e.target.closest && e.target.closest('.opt, .card, #tune'));
+}, { passive:false });
+window.addEventListener('touchmove', function(e){
+  e.preventDefault();
+  const t = e.touches[0];
+  tdx = clamp((t.clientX - tox)/70, -1, 1);
+  tdy = clamp((t.clientY - toy)/70, -1, 1);
+  if (Math.abs(tdx) + Math.abs(tdy) > 0.18) touchMoved = true;
+}, { passive:false });
+window.addEventListener('touchend', function(){
+  if (!touchMoved && !touchOnUI && state !== 'playing') onAction();
+  touchActive = false; tdx = 0; tdy = 0;
+});
+function readTurn(){
+  return ((keys.KeyD || keys.ArrowRight) ? 1 : 0) - ((keys.KeyA || keys.ArrowLeft) ? 1 : 0)
+       + (touchActive ? tdx : 0);
+}
+function readPitch(){
+  const raw = ((keys.KeyW || keys.ArrowUp) ? 1 : 0) - ((keys.KeyS || keys.ArrowDown) ? 1 : 0)
+            + (touchActive ? -tdy : 0);
+  return invertY ? -raw : raw;
+}
+const invBtn = document.getElementById('inv');
+invBtn.addEventListener('click', function(){
+  invertY = !invertY;
+  invBtn.textContent = invertY ? 'pitch: inverted' : 'pitch: normal';
+  invBtn.blur();
+});
+
+/* -------------------------- AUDIO --------------------------- */
+/* Web Audio only, muted by default, toggled by the small button. */
+const sndBtn = document.getElementById('snd');
+let audioOn = false, actx = null, windGain = null, windFilter = null, padGain = null, master = null;
+function initAudio(){
+  if (actx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  actx = new AC();
+  master = actx.createGain(); master.gain.value = 0.8; master.connect(actx.destination);
+  const len = actx.sampleRate*2;
+  const buf = actx.createBuffer(1, len, actx.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = Math.random()*2 - 1;
+  const src = actx.createBufferSource(); src.buffer = buf; src.loop = true;
+  windFilter = actx.createBiquadFilter();
+  windFilter.type = 'bandpass'; windFilter.frequency.value = 420; windFilter.Q.value = 0.8;
+  windGain = actx.createGain(); windGain.gain.value = 0;
+  src.connect(windFilter); windFilter.connect(windGain); windGain.connect(master);
+  src.start();
+  const o1 = actx.createOscillator(); o1.type = 'sine'; o1.frequency.value = 508;
+  const o2 = actx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 512.5;
+  const padFil = actx.createBiquadFilter(); padFil.type = 'lowpass'; padFil.frequency.value = 1200;
+  padGain = actx.createGain(); padGain.gain.value = 0;
+  o1.connect(padFil); o2.connect(padFil); padFil.connect(padGain); padGain.connect(master);
+  o1.start(); o2.start();
+}
+sndBtn.addEventListener('click', function(){
+  audioOn = !audioOn;
+  sndBtn.textContent = audioOn ? 'sound: on' : 'sound: off';
+  if (audioOn){ initAudio(); if (actx) actx.resume(); }
+  else if (actx){ actx.suspend(); }
+  sndBtn.blur();
+});
+function updateAudio(dt, speedNorm, thermalNorm){
+  if (!audioOn || !actx) return;
+  const wt = (state === 'playing') ? 0.03 + speedNorm*0.11 : 0.018;
+  windGain.gain.value += (wt - windGain.gain.value)*Math.min(1, 5*dt);
+  windFilter.frequency.value = 240 + speedNorm*760;
+  const pt = thermalNorm*0.07;
+  padGain.gain.value += (pt - padGain.gain.value)*Math.min(1, 4*dt);
+}
+function sfxCrash(){
+  if (!audioOn || !actx) return;
+  const len = Math.floor(actx.sampleRate*0.3);
+  const buf = actx.createBuffer(1, len, actx.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = (Math.random()*2 - 1)*(1 - i/len);
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const fil = actx.createBiquadFilter(); fil.type = 'lowpass';
+  fil.frequency.setValueAtTime(900, actx.currentTime);
+  fil.frequency.exponentialRampToValueAtTime(120, actx.currentTime + 0.28);
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.5, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.3);
+  src.connect(fil); fil.connect(g); g.connect(master);
+  src.start();
+}
+function sfxChime(){
+  if (!audioOn || !actx) return;
+  const notes = [523.25, 659.25, 783.99];
+  for (let i = 0; i < notes.length; i++){
+    const o = actx.createOscillator(); o.type = 'sine'; o.frequency.value = notes[i];
+    const g = actx.createGain();
+    const t0 = actx.currentTime + i*0.12;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.09, t0 + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.6);
+    o.connect(g); g.connect(master);
+    o.start(t0); o.stop(t0 + 1.7);
+  }
+}
+
+/* ------------------------ GAME STATE ------------------------ */
+function el(id){ return document.getElementById(id); }
+const oTitle = el('o_title'), oCrash = el('o_crash');
+const crashPlain = el('crash_plain'), crashWin = el('crash_win');
+const hud = el('hud'), timeEl = el('time'), altFill = el('altfill');
+const milestoneEl = el('milestone');
+
+let state = 'title';
+let timer = 0, crashT = 0, milestoneDone = false;
+let camD = 8;
+const P = { x:0, y:14, z:0, heading:0, speed:TUNE.FORWARD_SPEED, pitchS:0, turnS:0 };
+const camPos = new THREE.Vector3();
+let camSet = false;
+let thermalNorm = 0;
+let elapsed = 0;
+
+if (IS_TOUCH){
+  el('titlepress').textContent = 'Tap to fly';
+  el('crashpress').textContent = 'Tap to try again';
+  el('winpress').textContent = 'tap anywhere else to fly again';
+}
+
+/* --------------------- TUNING PANEL ------------------------- */
+/* The same knobs live in the TUNE block at the top of this
+   script if you would rather edit them permanently.             */
+const TUNE_DEFAULTS = JSON.parse(JSON.stringify(TUNE));
+const pendingWorld = {
+  THERMAL_SPACING: TUNE.THERMAL_SPACING,
+  CANYON_WIDTH: TUNE.CANYON_WIDTH
+};
+const tunePanel = el('tune'), tunBtn = el('tun');
+const tuneRows = [
+  { id:'t_spd', out:'v_spd', get:function(){ return TUNE.FORWARD_SPEED; },
+    set:function(v){ TUNE.FORWARD_SPEED = v; }, fmt:function(v){ return v.toFixed(0); } },
+  { id:'t_grv', out:'v_grv', get:function(){ return TUNE.SINK_RATE; },
+    set:function(v){ TUNE.SINK_RATE = v; }, fmt:function(v){ return v.toFixed(1); } },
+  { id:'t_lft', out:'v_lft', get:function(){ return TUNE.THERMAL_LIFT; },
+    set:function(v){ TUNE.THERMAL_LIFT = v; }, fmt:function(v){ return v.toFixed(1); } },
+  { id:'t_spc', out:'v_spc', get:function(){ return pendingWorld.THERMAL_SPACING; },
+    set:function(v){ pendingWorld.THERMAL_SPACING = v; }, fmt:function(v){ return v.toFixed(0); } },
+  { id:'t_wid', out:'v_wid', get:function(){ return pendingWorld.CANYON_WIDTH; },
+    set:function(v){ pendingWorld.CANYON_WIDTH = v; }, fmt:function(v){ return v.toFixed(0); } }
+];
+function refreshTune(){
+  for (const r of tuneRows){
+    el(r.id).value = r.get();
+    el(r.out).textContent = r.fmt(r.get());
+  }
+}
+for (const r of tuneRows){
+  el(r.id).addEventListener('input', function(){
+    const v = parseFloat(this.value);
+    r.set(v);
+    el(r.out).textContent = r.fmt(v);
+  });
+  el(r.id).addEventListener('change', function(){ this.blur(); });
+}
+el('t_reset').addEventListener('click', function(){
+  TUNE.FORWARD_SPEED = TUNE_DEFAULTS.FORWARD_SPEED;
+  TUNE.SINK_RATE = TUNE_DEFAULTS.SINK_RATE;
+  TUNE.THERMAL_LIFT = TUNE_DEFAULTS.THERMAL_LIFT;
+  pendingWorld.THERMAL_SPACING = TUNE_DEFAULTS.THERMAL_SPACING;
+  pendingWorld.CANYON_WIDTH = TUNE_DEFAULTS.CANYON_WIDTH;
+  refreshTune();
+  this.blur();
+});
+el('t_close').addEventListener('click', function(){
+  tunePanel.classList.add('gone');
+  this.blur();
+});
+function toggleTune(){
+  tunePanel.classList.toggle('gone');
+  refreshTune();
+}
+tunBtn.addEventListener('click', function(){ toggleTune(); tunBtn.blur(); });
+refreshTune();
+
+function fmt(t){
+  t = Math.max(0, t);
+  const m = Math.floor(t/60), s = Math.floor(t % 60);
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+function show(o){ o.classList.remove('hidden'); }
+function hide(o){ o.classList.add('hidden'); }
+
+function startRun(fullReset){
+  TUNE.THERMAL_SPACING = pendingWorld.THERMAL_SPACING;
+  TUNE.CANYON_WIDTH = pendingWorld.CANYON_WIDTH;
+  if (fullReset) reseed();
+  disposeChunks();
+  clearThermals();
+  clearScraps();
+  clearObstacles();
+  let d0;
+  if (fullReset){ runStartD = 0; d0 = 6; camD = 8; camSet = false; }
+  else { runStartD = camD; d0 = camD + 4; }
+  P.x = centerX(d0);
+  P.y = floorY(d0) + 16;
+  P.z = -d0;
+  P.heading = 0;
+  P.speed = TUNE.FORWARD_SPEED; P.pitchS = 0; P.turnS = 0;
+  plane.visible = true;
+  nextThermalD = runStartD + 110;
+  nextEventK = 1;
+  friendly = 2;
+  timer = 0;
+  milestoneDone = false;
+  timeEl.classList.remove('past');
+  milestoneEl.classList.remove('on');
+  hide(oTitle); hide(oCrash); show(hud);
+  state = 'playing';
+}
+
+function onAction(){
+  if (actx && audioOn && actx.state === 'suspended') actx.resume();
+  if (state === 'title') startRun(false);
+  else if (state === 'crash' && crashT > 0.5) startRun(true);
+}
+
+function crash(){
+  state = 'crash';
+  crashT = 0;
+  burstScraps(P.x, P.y, P.z, Math.sin(P.heading)*P.speed, -Math.cos(P.heading)*P.speed);
+  plane.visible = false;
+  hide(hud);
+  milestoneEl.classList.remove('on');
+  if (timer >= TUNE.RUN_SECONDS){
+    el('winflight').textContent = fmt(timer);
+    crashPlain.classList.add('gone');
+    crashWin.classList.remove('gone');
+  } else {
+    el('crashtime').textContent = fmt(timer);
+    crashPlain.classList.remove('gone');
+    crashWin.classList.add('gone');
+  }
+  sfxCrash();
+}
+
+/* ------------------------- FLIGHT --------------------------- */
+function updateFlight(dt){
+  const turn = clamp(readTurn(), -1, 1);
+  const pitch = clamp(readPitch(), -1, 1);
+  P.turnS += (turn - P.turnS)*Math.min(1, 7*dt);
+  P.pitchS += (pitch - P.pitchS)*Math.min(1, 6*dt);
+
+  /* Heading. Bank to turn. Let go and the nose stays where you
+     pointed it. Nothing steers this plane back for you.          */
+  P.heading += P.turnS*TUNE.TURN_RATE*(0.75 + 0.25*P.speed/TUNE.FORWARD_SPEED)*dt;
+  P.heading = clamp(P.heading, -TUNE.HEADING_MAX, TUNE.HEADING_MAX);
+
+  /* Speed. Diving buys speed, pulling up spends it. */
+  if (P.pitchS < 0) P.speed += (-P.pitchS)*TUNE.DIVE_ACCEL*dt;
+  else P.speed -= P.pitchS*TUNE.CLIMB_BLEED*dt;
+  P.speed += (TUNE.FORWARD_SPEED - P.speed)*TUNE.SPEED_RELAX*dt;
+  P.speed = clamp(P.speed, TUNE.SPEED_MIN, TUNE.SPEED_MAX);
+
+  /* Vertical. Always sinking, unless a thermal says otherwise. */
+  const agility = smooth(TUNE.SPEED_MIN, TUNE.FORWARD_SPEED*0.92, P.speed);
+  let vy = -TUNE.SINK_RATE*(0.6 + 0.4*P.speed/TUNE.FORWARD_SPEED);
+  if (P.pitchS > 0) vy += P.pitchS*TUNE.CLIMB_RATE*agility;
+  else vy += P.pitchS*TUNE.DIVE_RATE;
+  if (P.speed < TUNE.SPEED_MIN + 2) vy -= (TUNE.SPEED_MIN + 2 - P.speed)*0.6;
+
+  const d = -P.z;
+  thermalNorm = 0;
+  let pull = 0, bestLift = 0;
+  for (const t of thermals){
+    if (t.d < d - 70 || t.d > d + 70) continue;
+    const nx = (P.x - t.x)/(t.R + 1);
+    const nz = (P.z + t.d)/(t.R*t.elong + 1);
+    const rr = Math.sqrt(nx*nx + nz*nz);
+    if (rr < 1.18 && P.y > t.baseY - 2 && P.y < t.topY){
+      let f = clamp((1.18 - rr)/0.85, 0, 1);
+      if (P.y > t.topY - 6) f *= (t.topY - P.y)/6;
+      const s = t.str*f;
+      if (s > bestLift){ bestLift = s; pull = (t.x - P.x)*0.5*f; }
+    }
+  }
+  vy += bestLift;
+  thermalNorm = clamp(bestLift/TUNE.THERMAL_LIFT, 0, 1);
+
+  P.y += vy*dt;
+  P.x += Math.sin(P.heading)*P.speed*dt + clamp(pull, -2.5, 2.5)*dt
+       + Math.sin(elapsed*0.7)*0.10*dt;
+  P.z -= Math.cos(P.heading)*P.speed*dt;
+
+  /* Orientation. A little wobble so it reads as paper. */
+  const wob = 1.25 - agility;
+  const pitchVis = clamp(Math.atan2(vy, P.speed)*1.25, -0.65, 0.55)
+                 - (1 - agility)*0.30
+                 + Math.sin(elapsed*7.3)*0.02*wob;
+  const bankVis = -P.turnS*TUNE.BANK_MAX + Math.sin(elapsed*5.1)*0.03*wob;
+  const yawVis  = -P.heading + Math.sin(elapsed*3.7)*0.015*wob;
+  plane.position.set(P.x, P.y, P.z);
+  plane.rotation.set(pitchVis, yawVis, bankVis);
+
+  /* Terrain */
+  if (P.y < groundY(P.x, d) + TUNE.FLOOR_MARGIN){ crash(); return; }
+
+  /* Skill checks */
+  for (const o of obstacles){
+    if (Math.abs(o.d - d) > 3.2) continue;
+    if (o.kind === 'arch'){
+      if (Math.abs(o.d - d) < 2.4){
+        if (P.y > o.underY - 0.2 && P.y < o.topY + 0.2){ crash(); return; }
+        if (P.y < o.underY &&
+            (Math.abs(P.x - o.legL) < 2.2 || Math.abs(P.x - o.legR) < 2.2)){ crash(); return; }
+      }
+    } else {
+      if (Math.abs(o.d - d) < 2.8){
+        for (const px of o.xs){
+          if (Math.abs(P.x - px) < o.r && P.y < o.topY){ crash(); return; }
+        }
+      }
+    }
+  }
+
+  timer += dt;
+  if (!milestoneDone && timer >= TUNE.RUN_SECONDS){
+    milestoneDone = true;
+    timeEl.classList.add('past');
+    milestoneEl.classList.add('on');
+    setTimeout(function(){ milestoneEl.classList.remove('on'); }, 3800);
+    sfxChime();
+  }
+}
+
+/* ------------------------- CAMERA --------------------------- */
+function updateCamera(dt){
+  if (state === 'title'){
+    camD += 11*dt;
+    const tx = centerX(camD);
+    const ty = floorY(camD) + 15 + Math.sin(elapsed*0.5)*1.2;
+    const tz = -camD;
+    if (!camSet){ camPos.set(tx, ty, tz); camSet = true; }
+    camPos.x += (tx - camPos.x)*Math.min(1, 2*dt);
+    camPos.y += (ty - camPos.y)*Math.min(1, 2*dt);
+    camPos.z = tz;
+    camera.position.copy(camPos);
+    const la = camD + 45;
+    camera.lookAt(centerX(la), floorY(la) + 10, -la);
+    camera.fov += (62 - camera.fov)*Math.min(1, 2*dt);
+    camera.updateProjectionMatrix();
+    return;
+  }
+  const back = 7.2 + P.speed*0.085;
+  const up = 3.6;
+  const hx = Math.sin(P.heading), hz = Math.cos(P.heading);
+  const tx = P.x - hx*back*0.85;
+  const ty = P.y + up;
+  const tz = P.z + hz*back;
+  if (!camSet){ camPos.set(tx, ty, tz); camSet = true; }
+  camPos.x += (tx - camPos.x)*Math.min(1, 3.0*dt);
+  camPos.y += (ty - camPos.y)*Math.min(1, 4.0*dt);
+  camPos.z += (tz - camPos.z)*Math.min(1, 6.0*dt);
+  const dCam = -camPos.z;
+  const c = centerX(dCam), hw = halfWidth(dCam);
+  camPos.x = clamp(camPos.x, c - hw + 1.4, c + hw - 1.4);
+  camPos.y = Math.max(camPos.y, groundY(camPos.x, dCam) + 1.6);
+  camera.position.copy(camPos);
+  camera.lookAt(P.x + hx*7, P.y + 0.2, P.z - hz*7);
+  const fovT = clamp(62 + (P.speed - TUNE.FORWARD_SPEED)*0.5, 58, 72);
+  camera.fov += (fovT - camera.fov)*Math.min(1, 3*dt);
+  camera.updateProjectionMatrix();
+  camD = dCam;
+}
+
+/* --------------------------- HUD ---------------------------- */
+function updateHUD(){
+  timeEl.textContent = fmt(timer);
+  const d = -P.z;
+  const margin = clamp((P.y - groundY(P.x, d))/32, 0, 1);
+  altFill.style.height = (margin*100).toFixed(1) + '%';
+  if (state === 'playing' && margin < 0.2) altFill.classList.add('low');
+  else altFill.classList.remove('low');
+}
+
+/* ------------------------ MAIN LOOP ------------------------- */
+let last = performance.now();
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last)/1000);
+  last = now;
+  elapsed += dt;
+
+  if (state === 'playing') updateFlight(dt);
+
+  if (state === 'crash'){
+    crashT += dt;
+    updateScraps(dt);
+    if (crashT > 0.9 && oCrash.classList.contains('hidden')) show(oCrash);
+  }
+
+  const dFocus = state === 'title' ? camD : -P.z;
+  ensureChunks(dFocus);
+  spawnEventsTo(dFocus + TUNE.VIEW_DIST);
+  spawnThermalsTo(dFocus + TUNE.VIEW_DIST);
+  updateThermals(dFocus);
+  updateObstacles(dFocus);
+  updateAmbient(dt, dFocus);
+  updateCamera(dt);
+
+  sky.position.copy(camera.position);
+  if (state === 'title') sun.target.position.set(camPos.x, floorY(camD) + 10, -camD);
+  else sun.target.position.set(P.x, P.y, P.z);
+  sun.position.copy(sun.target.position).add(SUN_OFFSET);
+
+  const speedNorm = clamp((P.speed - TUNE.SPEED_MIN)/(TUNE.SPEED_MAX - TUNE.SPEED_MIN), 0, 1);
+  updateAudio(dt, speedNorm, thermalNorm);
+  if (state === 'playing') updateHUD();
+
+  bandTex.offset.y -= dt*0.35;   /* the rings rise */
+
+  renderer.render(scene, camera);
+}
+
+/* -------------------------- BOOT ---------------------------- */
+ensureChunks(camD);
+spawnThermalsTo(camD + TUNE.VIEW_DIST);
+requestAnimationFrame(function(t){ last = t; frame(t); });
+</script>
+</body>
+</html>
