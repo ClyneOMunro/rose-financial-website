@@ -74,6 +74,11 @@ h1{ margin:0 0 16px; font-size:clamp(42px,9vw,82px); font-weight:200;
   color:var(--sage); }
 .again{ margin:24px 0 0; font-size:10px; letter-spacing:0.3em; text-transform:uppercase;
   color:rgba(244,247,246,0.45); }
+.homelink{ display:inline-block; margin-top:30px; font-size:11px; letter-spacing:0.22em;
+  text-transform:uppercase; color:var(--mint); text-decoration:none;
+  border-bottom:1px solid rgba(173,219,194,0.4); padding-bottom:3px; }
+.homelink:hover{ color:var(--paper); border-color:var(--teal); }
+.card .homelink{ margin-top:18px; }
 .opt{ position:fixed; right:16px; z-index:6; cursor:pointer;
   background:transparent; border:1px solid rgba(244,247,246,0.25);
   color:rgba(244,247,246,0.6); border-radius:3px; padding:7px 12px;
@@ -137,6 +142,7 @@ h1{ margin:0 0 16px; font-size:clamp(42px,9vw,82px); font-weight:200;
     <p class="crashlabel">Time survived</p>
     <p class="crashtime" id="crashtime">0:00</p>
     <p class="press" id="crashpress">Press SPACE to try again</p>
+    <a class="homelink" href="https://rosefinancialmanagement.com">Learn about Rose Financial Management</a>
   </div>
   <div id="crash_win" class="card gone">
     <h2>You made it.</h2>
@@ -161,6 +167,7 @@ h1{ margin:0 0 16px; font-size:clamp(42px,9vw,82px); font-weight:200;
       </svg>
     </div>
     <p class="brandline">Rose Financial Management</p>
+    <a class="homelink" href="https://rosefinancialmanagement.com">rosefinancialmanagement.com</a>
     <p class="again" id="winpress">space to fly again</p>
   </div>
 </div>
@@ -202,7 +209,7 @@ const TUNE = {
   FORWARD_SPEED  : 26,    /* cruise speed, units per second */
   SINK_RATE      : 2.4,   /* baseline altitude loss at cruise, units per second */
   THERMAL_LIFT   : 11,    /* average lift inside a thermal, units per second */
-  THERMAL_SPACING: 140,   /* average gap between thermals, units of distance */
+  THERMAL_SPACING: 156,   /* average gap between thermals, units of distance */
   CANYON_WIDTH   : 30,    /* average wall to wall width, units */
 
   /* Flight feel */
@@ -213,7 +220,6 @@ const TUNE = {
   CLIMB_RATE: 6.5,        /* max climb from pulling up at full speed */
   DIVE_RATE: 9,           /* extra descent from pushing the nose down */
   TURN_RATE: 1.6,         /* heading change in rad per second at full bank */
-  HEADING_MAX: 1.0,       /* how far off the canyon axis you can point, rad */
   BANK_MAX: 0.85,         /* radians of visual bank */
 
   /* World */
@@ -221,7 +227,11 @@ const TUNE = {
   RIM_HEIGHT: 24,         /* average wall height above the floor */
   EASE_SECONDS: 15,       /* the extra starting width fades over this long */
   EASE_WIDTH_BONUS: 9,
-  EVENT_SPACING: 780,     /* one skill check about every 30 s of cruise */
+  EVENT_SPACING: 780,     /* base skill check gap, also the 30 s step length */
+  EVENT_ACCEL: 0.82,      /* gap multiplier applied at each 30 second step */
+  EVENT_GAP_MIN: 260,     /* skill checks never come closer than this */
+  NARROW_PER_STEP: 0.7,   /* canyon half width lost at each 30 second step */
+  NARROW_STEP_MAX: 7,     /* narrowing stops ratcheting after this many steps */
   VIEW_DIST: 470,
   COLLISION_SLACK: 0.45,  /* forgiveness at the walls */
   FLOOR_MARGIN: 0.35      /* forgiveness at the floor */
@@ -237,10 +247,12 @@ const C_PAPER  = new THREE.Color(0xf4f7f6);
 
 /* --------------------- SEEDED NOISE ------------------------- */
 let SEED = 0, S = [];
+let pathX = [0], pathZ = [0];
 function reseed(){
   SEED = Math.random()*1000;
   S = [];
   for (let i = 0; i < 12; i++) S.push(Math.random()*Math.PI*2);
+  pathX = [0]; pathZ = [0];
 }
 reseed();
 function hash(n){
@@ -248,12 +260,60 @@ function hash(n){
   return x - Math.floor(x);
 }
 const clamp = (v,a,b)=> v<a ? a : (v>b ? b : v);
+const wrapA = a=>{ while (a > Math.PI) a -= 2*Math.PI; while (a < -Math.PI) a += 2*Math.PI; return a; };
 const lerp  = (a,b,t)=> a + (b-a)*t;
 const smooth = (a,b,v)=>{ const t = clamp((v-a)/(b-a),0,1); return t*t*(3-2*t); };
 
 /* -------------------- CANYON GEOGRAPHY ---------------------- */
-/* d is distance flown forward. World z = -d. */
+/* d is arc distance along the canyon centerline. The canyon
+   direction swings through bends of up to about 180 degrees, so
+   the centerline is a real winding path: its direction thetaC(d)
+   is analytic and its position is integrated once into coarse
+   samples, extended lazily as the flight goes on.               */
 let runStartD = 0;
+
+const PATH_STEP = 3;
+function thetaC(s){
+  const env = smooth(60, 360, s);
+  return env*(2.2*Math.sin(s/330 + S[0])
+            + 0.85*Math.sin(s/150 + S[1])
+            + 0.30*Math.sin(s/60 + S[2]));
+}
+function kappaAt(s){ return (thetaC(s + 2) - thetaC(s - 2))/4; }
+function ensurePath(sMax){
+  const need = Math.floor(sMax/PATH_STEP) + 2;
+  while (pathX.length < need){
+    const i = pathX.length, s0 = (i - 1)*PATH_STEP;
+    const tm = thetaC(s0 + PATH_STEP*0.5);
+    pathX.push(pathX[i-1] + Math.sin(tm)*PATH_STEP);
+    pathZ.push(pathZ[i-1] - Math.cos(tm)*PATH_STEP);
+  }
+}
+const _pp = { x:0, z:0 };
+function pathPos(s, out){
+  if (s < 0) s = 0;
+  ensurePath(s + PATH_STEP*2);
+  const f = s/PATH_STEP, i = Math.floor(f), t = f - i;
+  out.x = pathX[i] + (pathX[i+1] - pathX[i])*t;
+  out.z = pathZ[i] + (pathZ[i+1] - pathZ[i])*t;
+  return out;
+}
+function projectS(x, z, sGuess){
+  let s = Math.max(0, sGuess);
+  for (let k = 0; k < 3; k++){
+    pathPos(s, _pp);
+    const th = thetaC(s);
+    const ds = (x - _pp.x)*Math.sin(th) - (z - _pp.z)*Math.cos(th);
+    s = Math.max(0, s + ds);
+    if (Math.abs(ds) < 0.01) break;
+  }
+  return s;
+}
+function latAt(x, z, s){
+  pathPos(s, _pp);
+  const th = thetaC(s);
+  return (x - _pp.x)*Math.cos(th) + (z - _pp.z)*Math.sin(th);
+}
 
 /* Gentle ramp inside the first two minutes */
 function diffK(d){ return Math.min(1, Math.max(0, d - runStartD)/2800); }
@@ -262,36 +322,62 @@ function lateK(d){
   return Math.min(1, Math.max(0, d - (runStartD + TUNE.RUN_SECONDS*TUNE.FORWARD_SPEED))/3400);
 }
 
-/* Skill check slots every EVENT_SPACING. 0 squeeze, 1 arch, 2 pillars. */
-function eventType(k){
-  if (k === 1) return 0;
-  return Math.floor(hash(k*57.31 + 4.2)*3) % 3;
+/* Every 30 seconds of cruise (one EVENT_SPACING) is a step up in
+   difficulty: skill checks arrive faster and the canyon narrows.
+   steps(d) counts completed checkpoints, easing each step in over
+   a few seconds so nothing pops.                                 */
+function steps(d){
+  const t = (d - runStartD)/TUNE.EVENT_SPACING;
+  if (t < 1) return 0;
+  const k = Math.floor(t);
+  return (k - 1) + smooth(0, 0.15, t - k);
+}
+
+/* Skill checks live in a schedule with shrinking gaps: each step
+   multiplies the gap by EVENT_ACCEL down to EVENT_GAP_MIN. Types:
+   0 squeeze, 1 arch, 2 pillars. Tight bends and the opening check
+   are always squeezes, never meshes.                             */
+let evD = [], evT = [], nextEventI = 0;
+function ensureEvents(dMax){
+  while (!evD.length || evD[evD.length - 1] < dMax + 200){
+    const prev = evD.length ? evD[evD.length - 1] : runStartD;
+    const g = evD.length
+      ? Math.max(TUNE.EVENT_GAP_MIN, TUNE.EVENT_SPACING*Math.pow(TUNE.EVENT_ACCEL, steps(prev + 120)))
+      : TUNE.EVENT_SPACING;
+    const D = prev + g;
+    let ty;
+    if (!evD.length) ty = 0;
+    else if (Math.abs(kappaAt(D)) > 0.010) ty = 0;
+    else ty = Math.floor(hash(D*0.113 + 4.2)*3) % 3;
+    evD.push(D); evT.push(ty);
+  }
+}
+function eventNear(d){
+  ensureEvents(d);
+  let lo = 0, hi = evD.length - 1;
+  while (lo < hi){ const mid = (lo + hi) >> 1; if (evD[mid] < d) lo = mid + 1; else hi = mid; }
+  for (const i of [lo - 1, lo]){
+    if (i >= 0 && i < evD.length && Math.abs(d - evD[i]) < 95) return i;
+  }
+  return -1;
 }
 function squeezeFactor(d){
-  const rel = d - runStartD;
-  const k = Math.round(rel/TUNE.EVENT_SPACING);
-  if (k < 1) return 1;
-  if (eventType(k) !== 0) return 1;
-  const D = runStartD + k*TUNE.EVENT_SPACING;
-  const u = Math.abs(d - D)/95;
+  const i = eventNear(d);
+  if (i < 0 || evT[i] !== 0) return 1;
+  const u = Math.abs(d - evD[i])/95;
   if (u >= 1) return 1;
   const bump = 1 - u*u*(3 - 2*u);
   const depth = 0.42 + 0.12*lateK(d);
   return 1 - depth*bump;
 }
 
-function centerX(d){
-  return Math.sin(d*0.011 + S[0])*20
-       + Math.sin(d*0.0046 + S[1])*30
-       + Math.sin(d*0.021 + S[2])*7;
-}
 function halfWidth(d){
   let w = TUNE.CANYON_WIDTH*0.5
         + Math.sin(d*0.0087 + S[3])*3.6
         + Math.sin(d*0.023  + S[4])*2.6;
   const rd = Math.max(0, d - runStartD);
   w += TUNE.EASE_WIDTH_BONUS * (1 - Math.min(1, rd/(TUNE.FORWARD_SPEED*TUNE.EASE_SECONDS)));
-  w -= 2.2*diffK(d);
+  w -= TUNE.NARROW_PER_STEP*Math.min(TUNE.NARROW_STEP_MAX, steps(d));
   w -= 3.5*lateK(d);
   w *= squeezeFactor(d);
   return Math.max(9.2, w);
@@ -306,11 +392,11 @@ function rimHeight(d, side){
   return Math.max(1.5, h);
 }
 function rimY(d, side){ return floorY(d) + rimHeight(d, side); }
-function groundY(x, d){
-  const c = centerX(d), hw = halfWidth(d);
-  const u = Math.abs(x-c)/(hw + TUNE.COLLISION_SLACK);
-  if (u >= 1) return rimY(d, x < c ? -1 : 1);
-  return floorY(d) + 2.4*Math.pow(u, 2.6);
+function groundAt(lat, s){
+  const hw = halfWidth(s);
+  const u = Math.abs(lat)/(hw + TUNE.COLLISION_SLACK);
+  if (u >= 1) return rimY(s, lat < 0 ? -1 : 1);
+  return floorY(s) + 2.4*Math.pow(u, 2.6);
 }
 
 /* ------------------------ RENDERER -------------------------- */
@@ -432,8 +518,8 @@ const planeMintMat = new THREE.MeshLambertMaterial({ color:C_MINT,
   emissive:C_MINT.clone().multiplyScalar(0.28) });
 const planeTealMat = new THREE.MeshLambertMaterial({ color:C_TEAL,
   emissive:C_TEAL.clone().multiplyScalar(0.24) });
-const planeUnderMat = new THREE.MeshLambertMaterial({ color:C_TEAL.clone().lerp(C_FOREST, 0.35),
-  emissive:C_TEAL.clone().multiplyScalar(0.10) });
+const planeUnderMat = new THREE.MeshLambertMaterial({ color:C_MINT.clone().lerp(C_TEAL, 0.30),
+  emissive:C_MINT.clone().multiplyScalar(0.14) });
 const planeLineMat = new THREE.LineBasicMaterial({ color:C_NAVY });
 const planeRidgeMat = new THREE.MeshBasicMaterial({ color:C_NAVY });
 const scrapMatA = new THREE.MeshLambertMaterial({ color:C_MINT, side:THREE.DoubleSide });
@@ -447,13 +533,18 @@ const tmpC = new THREE.Color();
 const tmpC2 = new THREE.Color();
 
 function rowProfile(d){
-  const c = centerX(d), hw = halfWidth(d), fl = floorY(d);
+  const hw = halfWidth(d), fl = floorY(d);
+  const kap = kappaAt(d);
   const sides = [];
   for (let s = 0; s < 2; s++){
     const side = s === 0 ? -1 : 1;
     const rim = rimY(d, side);
     const baseY = fl + 2.4;
     const span = Math.max(1, rim - baseY);
+    /* on the inside of a bend, pull the outer skirt in so the
+       terrain cannot fold over itself around the turn           */
+    const inner = side*kap > 0;
+    const maxOff = inner ? Math.max(hw + 5, 0.8/Math.max(1e-5, Math.abs(kap))) : 1e9;
     const arr = [];
     let out = 0;
     for (let t = 0; t <= WALL_RINGS; t++){
@@ -461,16 +552,16 @@ function rowProfile(d){
       if (t > 0) out += 0.4 + hash(d*3.17 + t*17.7 + side*57.3)*2.4*(0.4 + f);
       let y = baseY + span*(f*0.85 + 0.15*f*f);
       if (t > 0 && t < WALL_RINGS) y += (hash(d*1.71 + t*29.1 + side*11.9) - 0.5)*span*0.10;
-      arr.push({ x: c + side*(hw + out), y: y });
+      arr.push({ off: side*Math.min(hw + out, maxOff), y: y });
     }
     for (let t = 1; t < arr.length; t++)
       if (arr[t].y < arr[t-1].y + 0.4) arr[t].y = arr[t-1].y + 0.4;
     arr[arr.length-1].y = rim;
     const hm = hash(d*2.31 + side*91.7);
-    arr.push({ x: c + side*(hw + out + 30 + hm*14), y: rim + 1.2 + hm*2.5 });
+    arr.push({ off: side*Math.min(hw + out + 30 + hm*14, maxOff + 10), y: rim + 1.2 + hm*2.5 });
     sides.push(arr);
   }
-  return { d:d, c:c, hw:hw, fl:fl, sides:sides };
+  return { d:d, hw:hw, fl:fl, sides:sides };
 }
 
 /* Sun drenched sandstone, banded, only a little shade at the base. */
@@ -533,9 +624,11 @@ function buildVegetation(ci){
     const sgn = hash(key + 1) < 0.5 ? -1 : 1;
     const k = sgn*(0.34 + 0.62*Math.pow(hash(key + 2), 0.7));
     const kk = clamp(k, -0.97, 0.97);
-    const bx = centerX(dd) + halfWidth(dd)*kk;
+    pathPos(dd, _pp);
+    const thV = thetaC(dd);
+    const bx = _pp.x + Math.cos(thV)*halfWidth(dd)*kk;
     const by = floorY(dd) + 2.4*Math.pow(Math.abs(kk), 2.6);
-    const bz = -dd;
+    const bz = _pp.z + Math.sin(thV)*halfWidth(dd)*kk;
     const blades = 4 + Math.floor(hash(key + 3)*3);
     for (let b = 0; b < blades; b++){
       const bk = key + 10 + b*3.31;
@@ -557,9 +650,11 @@ function buildVegetation(ci){
     const dd = d0 + hash(key)*CHUNK_LEN;
     const sgn = hash(key + 1) < 0.5 ? -1 : 1;
     const kk = clamp(sgn*(0.45 + 0.5*hash(key + 2)), -0.95, 0.95);
-    const bx = centerX(dd) + halfWidth(dd)*kk;
+    pathPos(dd, _pp);
+    const thV = thetaC(dd);
+    const bx = _pp.x + Math.cos(thV)*halfWidth(dd)*kk;
     const by = floorY(dd) + 2.4*Math.pow(Math.abs(kk), 2.6);
-    const bz = -dd;
+    const bz = _pp.z + Math.sin(thV)*halfWidth(dd)*kk;
     const R = 0.45 + hash(key + 3)*0.7;
     tmpC.copy(C_FOREST).lerp(C_TEAL, 0.2 + hash(key + 4)*0.3).multiplyScalar(0.85 + hash(key + 5)*0.25);
     const tip = tmpC2.copy(tmpC).lerp(C_MINT, 0.3);
@@ -577,9 +672,11 @@ function buildVegetation(ci){
     const key = ci*43.9 + n*17.29 + 900;
     const dd = d0 + hash(key)*CHUNK_LEN;
     const kk = clamp((hash(key + 1)*2 - 1)*0.9, -0.92, 0.92);
-    const bx = centerX(dd) + halfWidth(dd)*kk;
+    pathPos(dd, _pp);
+    const thV = thetaC(dd);
+    const bx = _pp.x + Math.cos(thV)*halfWidth(dd)*kk;
     const by = floorY(dd) + 2.4*Math.pow(Math.abs(kk), 2.6);
-    const bz = -dd;
+    const bz = _pp.z + Math.sin(thV)*halfWidth(dd)*kk;
     const R = 0.3 + hash(key + 2)*0.6;
     tmpC.copy(C_SAGE).lerp(C_PAPER, hash(key + 3)*0.3).multiplyScalar(0.85 + hash(key + 4)*0.2);
     tmpC2.copy(tmpC).multiplyScalar(0.8);
@@ -604,34 +701,44 @@ function buildVegetation(ci){
 function buildChunk(ci){
   const pos = [], uv = [], col = [];
   const rows = [];
-  for (let r = 0; r <= ROWS; r++) rows.push(rowProfile(ci*CHUNK_LEN + r*(CHUNK_LEN/ROWS)));
+  for (let r = 0; r <= ROWS; r++){
+    const d = ci*CHUNK_LEN + r*(CHUNK_LEN/ROWS);
+    const prof = rowProfile(d);
+    pathPos(d, _pp);
+    const th = thetaC(d);
+    rows.push({ p:prof, bx:_pp.x, bz:_pp.z, lx:Math.cos(th), lz:Math.sin(th) });
+  }
+  function W(row, off){ return [row.bx + row.lx*off, row.bz + row.lz*off]; }
 
   const FK = [-1, -0.55, -0.22, 0.22, 0.55, 1];
   for (let r = 0; r < ROWS; r++){
-    const A = rows[r], B = rows[r+1], za = -A.d, zb = -B.d;
+    const A = rows[r], B = rows[r+1];
     for (let s = 0; s < 2; s++){
-      const a = A.sides[s], b = B.sides[s];
+      const a = A.p.sides[s], b = B.p.sides[s];
       for (let t = 0; t < a.length - 1; t++){
         const isMesa = (t === a.length - 2);
-        wallColor(tmpC, isMesa, (t + 0.5)/WALL_RINGS, a[t].y, A.d*1.7 + t*13.1 + s*7.7);
-        const p00 = a[t], p01 = a[t+1], p10 = b[t], p11 = b[t+1];
+        wallColor(tmpC, isMesa, (t + 0.5)/WALL_RINGS, a[t].y, A.p.d*1.7 + t*13.1 + s*7.7);
+        const w00 = W(A, a[t].off), w01 = W(A, a[t+1].off);
+        const w10 = W(B, b[t].off), w11 = W(B, b[t+1].off);
         if (s === 0){
-          facePush(pos,uv,col, p00.x,p00.y,za, p10.x,p10.y,zb, p01.x,p01.y,za);
-          facePush(pos,uv,col, p10.x,p10.y,zb, p11.x,p11.y,zb, p01.x,p01.y,za);
+          facePush(pos,uv,col, w00[0],a[t].y,w00[1], w10[0],b[t].y,w10[1], w01[0],a[t+1].y,w01[1]);
+          facePush(pos,uv,col, w10[0],b[t].y,w10[1], w11[0],b[t+1].y,w11[1], w01[0],a[t+1].y,w01[1]);
         } else {
-          facePush(pos,uv,col, p00.x,p00.y,za, p01.x,p01.y,za, p10.x,p10.y,zb);
-          facePush(pos,uv,col, p01.x,p01.y,za, p11.x,p11.y,zb, p10.x,p10.y,zb);
+          facePush(pos,uv,col, w00[0],a[t].y,w00[1], w01[0],a[t+1].y,w01[1], w10[0],b[t].y,w10[1]);
+          facePush(pos,uv,col, w01[0],a[t+1].y,w01[1], w11[0],b[t+1].y,w11[1], w10[0],b[t].y,w10[1]);
         }
       }
     }
     for (let k = 0; k < FK.length - 1; k++){
-      floorColor(tmpC, (FK[k] + FK[k+1])/2, A.d*2.3 + k*9.1);
-      const q00x = A.c + A.hw*FK[k],   q00y = A.fl + 2.4*Math.pow(Math.abs(FK[k]), 2.6);
-      const q01x = A.c + A.hw*FK[k+1], q01y = A.fl + 2.4*Math.pow(Math.abs(FK[k+1]), 2.6);
-      const q10x = B.c + B.hw*FK[k],   q10y = B.fl + 2.4*Math.pow(Math.abs(FK[k]), 2.6);
-      const q11x = B.c + B.hw*FK[k+1], q11y = B.fl + 2.4*Math.pow(Math.abs(FK[k+1]), 2.6);
-      facePush(pos,uv,col, q00x,q00y,za, q01x,q01y,za, q10x,q10y,zb);
-      facePush(pos,uv,col, q01x,q01y,za, q11x,q11y,zb, q10x,q10y,zb);
+      floorColor(tmpC, (FK[k] + FK[k+1])/2, A.p.d*2.3 + k*9.1);
+      const y0a = A.p.fl + 2.4*Math.pow(Math.abs(FK[k]), 2.6);
+      const y1a = A.p.fl + 2.4*Math.pow(Math.abs(FK[k+1]), 2.6);
+      const y0b = B.p.fl + 2.4*Math.pow(Math.abs(FK[k]), 2.6);
+      const y1b = B.p.fl + 2.4*Math.pow(Math.abs(FK[k+1]), 2.6);
+      const q00 = W(A, A.p.hw*FK[k]),   q01 = W(A, A.p.hw*FK[k+1]);
+      const q10 = W(B, B.p.hw*FK[k]),   q11 = W(B, B.p.hw*FK[k+1]);
+      facePush(pos,uv,col, q00[0],y0a,q00[1], q01[0],y1a,q01[1], q10[0],y0b,q10[1]);
+      facePush(pos,uv,col, q01[0],y1a,q01[1], q11[0],y1b,q11[1], q10[0],y0b,q10[1]);
     }
   }
   const mesh = finishRock(pos, uv, col);
@@ -662,22 +769,29 @@ function disposeChunks(){
 /* Squeezes are analytic. Arches and pillars are meshes with
    simple collision records checked in updateFlight.             */
 let obstacles = [];
-let nextEventK = 1;
 
 function makeArch(D){
-  const c = centerX(D), hw = halfWidth(D), fl = floorY(D);
+  const hw = halfWidth(D), fl = floorY(D);
   const underY = fl + 9.5 - 1.5*lateK(D);
   const topY = fl + 20;
+  pathPos(D, _pp);
+  const bx = _pp.x, bz = _pp.z;
+  const th = thetaC(D);
+  const lx = Math.cos(th), lz = Math.sin(th);   /* lateral axis  */
+  const tx = Math.sin(th), tz = -Math.cos(th);  /* along axis    */
   const pos = [], uv = [], col = [];
-  function jbox(x0, x1, y0, y1, z0, z1, key){
-    /* Irregular box: eight jittered corners, twelve triangles */
+  function jbox(u0, u1, y0, y1, v0, v1, key){
+    /* Irregular box in canyon local frame: u across, v along */
     const j = function(v, kk){ return v + (hash(key + kk)-0.5)*0.8; };
-    const v = [
-      [j(x0,1), j(y0,2), j(z0,3)], [j(x1,4), j(y0,5), j(z0,6)],
-      [j(x1,7), j(y1,8), j(z0,9)], [j(x0,10), j(y1,11), j(z0,12)],
-      [j(x0,13), j(y0,14), j(z1,15)], [j(x1,16), j(y0,17), j(z1,18)],
-      [j(x1,19), j(y1,20), j(z1,21)], [j(x0,22), j(y1,23), j(z1,24)]
+    const vl = [
+      [j(u0,1), j(y0,2), j(v0,3)], [j(u1,4), j(y0,5), j(v0,6)],
+      [j(u1,7), j(y1,8), j(v0,9)], [j(u0,10), j(y1,11), j(v0,12)],
+      [j(u0,13), j(y0,14), j(v1,15)], [j(u1,16), j(y0,17), j(v1,18)],
+      [j(u1,19), j(y1,20), j(v1,21)], [j(u0,22), j(y1,23), j(v1,24)]
     ];
+    const v = vl.map(function(q){
+      return [bx + lx*q[0] + tx*q[2], q[1], bz + lz*q[0] + tz*q[2]];
+    });
     const faces = [
       [0,2,1],[0,3,2], [4,5,6],[4,6,7],
       [0,1,5],[0,5,4], [3,6,2],[3,7,6],
@@ -690,28 +804,36 @@ function makeArch(D){
       facePush(pos,uv,col, A[0],A[1],A[2], B[0],B[1],B[2], C[0],C[1],C[2]);
     }
   }
-  const zc = -D;
-  jbox(c - hw - 2.5, c + hw + 2.5, underY, topY, zc - 2, zc + 2, D*0.71);           /* lintel */
-  jbox(c - hw - 0.6, c - hw + 2.6, fl - 1.5, underY + 0.6, zc - 2, zc + 2, D*1.31); /* left leg */
-  jbox(c + hw - 2.6, c + hw + 0.6, fl - 1.5, underY + 0.6, zc - 2, zc + 2, D*1.93); /* right leg */
+  jbox(-hw - 2.5, hw + 2.5, underY, topY, -2, 2, D*0.71);           /* lintel */
+  jbox(-hw - 0.6, -hw + 2.6, fl - 1.5, underY + 0.6, -2, 2, D*1.31); /* left leg */
+  jbox(hw - 2.6, hw + 0.6, fl - 1.5, underY + 0.6, -2, 2, D*1.93);   /* right leg */
   const mesh = finishRock(pos, uv, col);
   scene.add(mesh);
   obstacles.push({ kind:'arch', d:D, underY:underY, topY:topY,
-    legL: c - hw + 0.9, legR: c + hw - 0.9, mesh:mesh });
+    legL: -hw + 0.9, legR: hw - 0.9, mesh:mesh });
 }
 
 function makePillars(D){
-  const c = centerX(D), hw = halfWidth(D), fl = floorY(D);
+  const hw = halfWidth(D), fl = floorY(D);
   const topY = Math.max(rimY(D,-1), rimY(D,1)) + 3;
-  const count = lateK(D) > 0.55 ? 3 : 2;
+  /* Pillar lanes adapt to the narrowing canyon: the center gap
+     stays flyable at any width, and the three pillar wall only
+     appears where there is room for two honest routes.          */
+  const count = (lateK(D) > 0.55 && hw >= 14) ? 3 : 2;
+  const slotMag = Math.max(0.42, Math.min(0.62, 4.95/hw));
   const slots = count === 2
-    ? [-0.42 + (hash(D*0.37)-0.5)*0.14, 0.40 + (hash(D*0.61)-0.5)*0.14]
+    ? [-slotMag + (hash(D*0.37)-0.5)*0.08, slotMag + (hash(D*0.61)-0.5)*0.08]
     : [-0.55, 0.02 + (hash(D*0.61)-0.5)*0.1, 0.56];
+  pathPos(D, _pp);
+  const bx = _pp.x, bz = _pp.z;
+  const th = thetaC(D);
+  const lx = Math.cos(th), lz = Math.sin(th);
+  const tx = Math.sin(th), tz = -Math.cos(th);
   const pos = [], uv = [], col = [];
   const xs = [];
   for (let p = 0; p < slots.length; p++){
-    const px = c + hw*slots[p];
-    xs.push(px);
+    const plat = hw*slots[p];
+    xs.push(plat);
     const R = 2.0 + hash(D*0.93 + p*7)*0.7;
     const yb = fl - 1, ym = fl + (topY - fl)*0.55, yt = topY;
     const NSEG = 6;
@@ -720,7 +842,8 @@ function makePillars(D){
       for (let i = 0; i < NSEG; i++){
         const ang = (i/NSEG)*Math.PI*2;
         const rr = r*(0.85 + hash(key + i*3.1)*0.3);
-        a.push([px + Math.cos(ang)*rr, y, -D + Math.sin(ang)*rr]);
+        const u = plat + Math.cos(ang)*rr, v = Math.sin(ang)*rr;
+        a.push([bx + lx*u + tx*v, y, bz + lz*u + tz*v]);
       }
       return a;
     }
@@ -749,13 +872,13 @@ function makePillars(D){
 }
 
 function spawnEventsTo(dMax){
-  while (runStartD + nextEventK*TUNE.EVENT_SPACING < dMax){
-    const k = nextEventK++;
-    const D = runStartD + k*TUNE.EVENT_SPACING;
-    const ty = eventType(k);
+  ensureEvents(dMax);
+  while (nextEventI < evD.length && evD[nextEventI] < dMax){
+    const D = evD[nextEventI], ty = evT[nextEventI];
     if (ty === 1) makeArch(D);
     else if (ty === 2) makePillars(D);
     /* type 0 is a squeeze, already baked into halfWidth */
+    nextEventI++;
   }
 }
 function clearObstacles(){
@@ -787,12 +910,20 @@ const unitThermGeo = (function(){
   return g;
 })();
 let thermals = [];
-let nextThermalD = 0, friendly = 0;
+let nextThermalD = 0, friendly = 0, postEvent = false;
 
 function makeThermal(d){
   let R, str, xoff;
   const h1 = hash(d*0.531), h2 = hash(d*0.257 + 9), h3 = hash(d*0.733 + 33);
-  if (friendly > 0){
+  if (postEvent){
+    /* first thermal after a skill check: decent and near center,
+       though the guarantee fades as the 30 second steps stack up */
+    postEvent = false;
+    const sd = Math.min(6, steps(d));
+    R = 6.5 + h1*2 - sd*0.42;
+    str = TUNE.THERMAL_LIFT*Math.max(0.95, 1.1 - sd*0.03);
+    xoff = (h2 - 0.5)*Math.min(1.4, 0.7 + sd*0.12);
+  } else if (friendly > 0){
     friendly--;
     R = 8 + h1*2.5;
     str = TUNE.THERMAL_LIFT*1.05;
@@ -800,30 +931,35 @@ function makeThermal(d){
   } else {
     R = (3.6 + h1*4.6)*(1 - 0.12*lateK(d));
     str = lerp(TUNE.THERMAL_LIFT*1.30, TUNE.THERMAL_LIFT*0.85, (R - 3.6)/4.6)*(0.9 + 0.2*h3);
-    xoff = (h2 - 0.5)*1.5;
+    xoff = (h2 - 0.5)*2.2;
   }
-  const c = centerX(d), hw = halfWidth(d), fl = floorY(d);
-  const x = c + clamp(xoff, -1, 1)*Math.max(0, hw - R*0.5 - 1.6);
-  const topY = Math.max(rimY(d,-1), rimY(d,1)) + 9;
+  const hw = halfWidth(d), fl = floorY(d);
+  /* thermals lean toward the walls on straights but stay near
+     the middle of tight bends so every ride is reachable        */
+  const bendPull = 1 - Math.min(0.5, Math.abs(kappaAt(d))*24);
+  const lat = clamp(xoff, -1, 1)*Math.max(0, hw - R*0.5 - 1.6)*bendPull;
+  const topY = Math.max(rimY(d,-1), rimY(d,1)) + 5;
   const baseY = fl - 1;
   const H = topY - baseY;
   const elong = 2.1 + h3*1.1;
 
   const mesh = new THREE.Mesh(unitThermGeo, thermMat);
   mesh.scale.set(R, H, R*elong);
-  mesh.position.set(x, baseY + H/2, -d);
+  pathPos(d, _pp);
+  const th = thetaC(d);
+  mesh.position.set(_pp.x + Math.cos(th)*lat, baseY + H/2, _pp.z + Math.sin(th)*lat);
+  mesh.rotation.y = -th;
   mesh.renderOrder = 2;
   scene.add(mesh);
-  thermals.push({ d:d, x:x, R:R, elong:elong, str:str, baseY:baseY, topY:topY, mesh:mesh });
+  thermals.push({ d:d, lat:lat, R:R, elong:elong, str:str, baseY:baseY, topY:topY, mesh:mesh });
 }
 
 function spawnThermalsTo(dMax){
   while (nextThermalD < dMax){
-    /* keep thermals clear of the skill check slots */
-    const slot = Math.round((nextThermalD - runStartD)/TUNE.EVENT_SPACING);
-    if (slot >= 1){
-      const D = runStartD + slot*TUNE.EVENT_SPACING;
-      if (Math.abs(nextThermalD - D) < 55) nextThermalD = D + 57;
+    /* keep thermals clear of the skill checks */
+    const ei = eventNear(nextThermalD);
+    if (ei >= 0 && Math.abs(nextThermalD - evD[ei]) < 55 && nextThermalD < evD[ei] + 56){
+      nextThermalD = evD[ei] + 57; postEvent = true;
     }
     makeThermal(nextThermalD);
     const g = TUNE.THERMAL_SPACING*lerp(0.75, 1.22, hash(nextThermalD*0.77));
@@ -851,18 +987,29 @@ function triGeo(verts){
   return g;
 }
 const plane = (function(){
-  /* Two tone wings and navy fold lines, matching the logo mark. */
+  /* Panel layout copied from the logo mark: on each wing a teal
+     inner panel rides the navy center fold and a mint outer panel
+     sits beyond a crease, with the under fold peeking out behind
+     the trailing edge as the two small flaps. Navy lines on every
+     edge and crease.                                              */
   const N = [0, 0.02, -1.5], C = [0, 0.20, 1.05];
-  const WL = [-1.08, 0.16, 0.92], WR = [1.08, 0.16, 0.92];
-  const KL = [-0.07, -0.17, 1.05], KR = [0.07, -0.17, 1.05];
-  const topL = [].concat(N, WL, C);
-  const topR = [].concat(N, C, WR);
+  const WL = [-1.08, 0.26, 0.92], WR = [1.08, 0.26, 0.92];      /* tips kicked up at the crease */
+  const ML = [-0.63, 0.23, 0.97], MR = [0.63, 0.23, 0.97];      /* crease on the trailing edge */
+  const KL = [-0.07, -0.17, 1.24], KR = [0.07, -0.17, 1.24];    /* keel reaches past the wing */
+  const innerL = [].concat(N, ML, C);
+  const innerR = [].concat(N, C, MR);
+  const outerL = [].concat(N, WL, ML);
+  const outerR = [].concat(N, MR, WR);
   const under = [].concat(N, KL, WL,  N, WR, KR,  N, KR, KL,  C, WL, KL,  C, KR, WR);
   const g = new THREE.Group();
-  const mL = new THREE.Mesh(triGeo(topL), planeTealMat);
-  const mR = new THREE.Mesh(triGeo(topR), planeMintMat);
-  const mU = new THREE.Mesh(triGeo(under), planeUnderMat);
-  for (const m of [mL, mR, mU]){
+  const parts = [
+    new THREE.Mesh(triGeo(innerL), planeTealMat),
+    new THREE.Mesh(triGeo(innerR), planeTealMat),
+    new THREE.Mesh(triGeo(outerL), planeMintMat),
+    new THREE.Mesh(triGeo(outerR), planeMintMat),
+    new THREE.Mesh(triGeo(under), planeUnderMat)
+  ];
+  for (const m of parts){
     m.castShadow = true;
     g.add(m);
     g.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), planeLineMat));
@@ -903,7 +1050,7 @@ const leaves = [];
 for (let i = 0; i < 10; i++){
   const m = new THREE.Mesh(leafGeo, i % 2 ? leafMatA : leafMatB);
   scene.add(m);
-  leaves.push({ m:m, d:0, x:0, y:0, fall:0,
+  leaves.push({ m:m, d:0, lat:0, y:0, fall:0,
     sway: Math.random()*Math.PI*2,
     rx: (Math.random() - 0.5)*4,
     rz: (Math.random() - 0.5)*4,
@@ -911,9 +1058,9 @@ for (let i = 0; i < 10; i++){
 }
 function respawnLeaf(L, dFocus){
   const d = dFocus + 40 + Math.random()*260;
-  const c = centerX(d), hw = halfWidth(d), fl = floorY(d);
+  const hw = halfWidth(d), fl = floorY(d);
   L.d = d;
-  L.x = c + (Math.random() - 0.5)*1.6*hw*0.8;
+  L.lat = (Math.random() - 0.5)*1.6*hw*0.8;
   L.y = fl + 4 + Math.random()*(TUNE.RIM_HEIGHT - 2);
   L.fall = 0.7 + Math.random()*0.9;
   L.live = true;
@@ -933,16 +1080,21 @@ function updateAmbient(dt, dFocus){
       b.drift = (Math.random() - 0.5)*3;
     }
     const bd = dFocus + b.dOff;
-    b.g.position.set(centerX(bd)*0.6 + b.x, floorY(bd) + b.y, -bd);
+    pathPos(bd, _pp);
+    const thB = thetaC(bd);
+    b.g.position.set(_pp.x + Math.cos(thB)*b.x*0.4, floorY(bd) + b.y,
+                     _pp.z + Math.sin(thB)*b.x*0.4);
   }
   for (const L of leaves){
     if (!L.live){ respawnLeaf(L, dFocus); continue; }
     L.y -= L.fall*dt;
     L.sway += dt*1.3;
-    L.x += Math.sin(L.sway)*dt*1.1;
+    L.lat += Math.sin(L.sway)*dt*1.1;
     L.m.rotation.x += L.rx*dt;
     L.m.rotation.z += L.rz*dt;
-    L.m.position.set(L.x, L.y, -L.d);
+    pathPos(L.d, _pp);
+    const thF = thetaC(L.d);
+    L.m.position.set(_pp.x + Math.cos(thF)*L.lat, L.y, _pp.z + Math.sin(thF)*L.lat);
     if (L.y < floorY(L.d) + 1 || L.d < dFocus - 30) L.live = false;
   }
 }
@@ -1010,7 +1162,7 @@ window.addEventListener('touchstart', function(e){
   const t = e.touches[0];
   tox = t.clientX; toy = t.clientY;
   touchActive = true; touchMoved = false; tdx = 0; tdy = 0;
-  touchOnUI = !!(e.target.closest && e.target.closest('.opt, .card, #tune'));
+  touchOnUI = !!(e.target.closest && e.target.closest('.opt, .card, #tune, .homelink'));
 }, { passive:false });
 window.addEventListener('touchmove', function(e){
   e.preventDefault();
@@ -1121,8 +1273,8 @@ const milestoneEl = el('milestone');
 
 let state = 'title';
 let timer = 0, crashT = 0, milestoneDone = false;
-let camD = 8;
-const P = { x:0, y:14, z:0, heading:0, speed:TUNE.FORWARD_SPEED, pitchS:0, turnS:0 };
+let camD = 8, sCam = 8;
+const P = { x:0, y:14, z:0, s:8, lat:0, heading:0, speed:TUNE.FORWARD_SPEED, pitchS:0, turnS:0 };
 const camPos = new THREE.Vector3();
 let camSet = false;
 let thermalNorm = 0;
@@ -1208,15 +1360,20 @@ function startRun(fullReset){
   let d0;
   if (fullReset){ runStartD = 0; d0 = 6; camD = 8; camSet = false; }
   else { runStartD = camD; d0 = camD + 4; }
-  P.x = centerX(d0);
+
+  pathPos(d0, _pp);
+  P.x = _pp.x;
   P.y = floorY(d0) + 16;
-  P.z = -d0;
-  P.heading = 0;
+  P.z = _pp.z;
+  P.heading = thetaC(d0);
+  P.s = d0; P.lat = 0;
+  sCam = Math.max(0, d0 - 6);
   P.speed = TUNE.FORWARD_SPEED; P.pitchS = 0; P.turnS = 0;
   plane.visible = true;
   nextThermalD = runStartD + 110;
-  nextEventK = 1;
+  evD.length = 0; evT.length = 0; nextEventI = 0;
   friendly = 2;
+  postEvent = false;
   timer = 0;
   milestoneDone = false;
   timeEl.classList.remove('past');
@@ -1258,9 +1415,9 @@ function updateFlight(dt){
   P.pitchS += (pitch - P.pitchS)*Math.min(1, 6*dt);
 
   /* Heading. Bank to turn. Let go and the nose stays where you
-     pointed it. Nothing steers this plane back for you.          */
-  P.heading += P.turnS*TUNE.TURN_RATE*(0.75 + 0.25*P.speed/TUNE.FORWARD_SPEED)*dt;
-  P.heading = clamp(P.heading, -TUNE.HEADING_MAX, TUNE.HEADING_MAX);
+     pointed it. Nothing steers this plane back for you. The
+     canyon bends up to 180 degrees, so heading is fully free.    */
+  P.heading = wrapA(P.heading + P.turnS*TUNE.TURN_RATE*(0.75 + 0.25*P.speed/TUNE.FORWARD_SPEED)*dt);
 
   /* Speed. Diving buys speed, pulling up spends it. */
   if (P.pitchS < 0) P.speed += (-P.pitchS)*TUNE.DIVE_ACCEL*dt;
@@ -1275,28 +1432,31 @@ function updateFlight(dt){
   else vy += P.pitchS*TUNE.DIVE_RATE;
   if (P.speed < TUNE.SPEED_MIN + 2) vy -= (TUNE.SPEED_MIN + 2 - P.speed)*0.6;
 
-  const d = -P.z;
+  const d = P.s;
   thermalNorm = 0;
   let pull = 0, bestLift = 0;
   for (const t of thermals){
     if (t.d < d - 70 || t.d > d + 70) continue;
-    const nx = (P.x - t.x)/(t.R + 1);
-    const nz = (P.z + t.d)/(t.R*t.elong + 1);
-    const rr = Math.sqrt(nx*nx + nz*nz);
+    const du = (P.lat - t.lat)/(t.R + 1);
+    const dv = (P.s - t.d)/(t.R*t.elong + 1);
+    const rr = Math.sqrt(du*du + dv*dv);
     if (rr < 1.18 && P.y > t.baseY - 2 && P.y < t.topY){
-      let f = clamp((1.18 - rr)/0.85, 0, 1);
+      let f = clamp((1.18 - rr)/0.62, 0, 1);
       if (P.y > t.topY - 6) f *= (t.topY - P.y)/6;
       const s = t.str*f;
-      if (s > bestLift){ bestLift = s; pull = (t.x - P.x)*0.5*f; }
+      if (s > bestLift){ bestLift = s; pull = (t.lat - P.lat)*0.5*f; }
     }
   }
   vy += bestLift;
   thermalNorm = clamp(bestLift/TUNE.THERMAL_LIFT, 0, 1);
 
   P.y += vy*dt;
-  P.x += Math.sin(P.heading)*P.speed*dt + clamp(pull, -2.5, 2.5)*dt
-       + Math.sin(elapsed*0.7)*0.10*dt;
-  P.z -= Math.cos(P.heading)*P.speed*dt;
+  const thL = thetaC(P.s);
+  const drift = clamp(pull, -2.5, 2.5) + Math.sin(elapsed*0.7)*0.10;
+  P.x += Math.sin(P.heading)*P.speed*dt + Math.cos(thL)*drift*dt;
+  P.z -= Math.cos(P.heading)*P.speed*dt - Math.sin(thL)*drift*dt;
+  P.s = projectS(P.x, P.z, P.s + P.speed*dt*0.9);
+  P.lat = latAt(P.x, P.z, P.s);
 
   /* Orientation. A little wobble so it reads as paper. */
   const wob = 1.25 - agility;
@@ -1309,7 +1469,7 @@ function updateFlight(dt){
   plane.rotation.set(pitchVis, yawVis, bankVis);
 
   /* Terrain */
-  if (P.y < groundY(P.x, d) + TUNE.FLOOR_MARGIN){ crash(); return; }
+  if (P.y < groundAt(P.lat, P.s) + TUNE.FLOOR_MARGIN){ crash(); return; }
 
   /* Skill checks */
   for (const o of obstacles){
@@ -1318,12 +1478,12 @@ function updateFlight(dt){
       if (Math.abs(o.d - d) < 2.4){
         if (P.y > o.underY - 0.2 && P.y < o.topY + 0.2){ crash(); return; }
         if (P.y < o.underY &&
-            (Math.abs(P.x - o.legL) < 2.2 || Math.abs(P.x - o.legR) < 2.2)){ crash(); return; }
+            (Math.abs(P.lat - o.legL) < 2.2 || Math.abs(P.lat - o.legR) < 2.2)){ crash(); return; }
       }
     } else {
       if (Math.abs(o.d - d) < 2.8){
         for (const px of o.xs){
-          if (Math.abs(P.x - px) < o.r && P.y < o.topY){ crash(); return; }
+          if (Math.abs(P.lat - px) < o.r && P.y < o.topY){ crash(); return; }
         }
       }
     }
@@ -1343,18 +1503,19 @@ function updateFlight(dt){
 function updateCamera(dt){
   if (state === 'title'){
     camD += 11*dt;
-    const tx = centerX(camD);
+    pathPos(camD, _pp);
+    const tx = _pp.x, tz = _pp.z;
     const ty = floorY(camD) + 15 + Math.sin(elapsed*0.5)*1.2;
-    const tz = -camD;
     if (!camSet){ camPos.set(tx, ty, tz); camSet = true; }
     camPos.x += (tx - camPos.x)*Math.min(1, 2*dt);
     camPos.y += (ty - camPos.y)*Math.min(1, 2*dt);
-    camPos.z = tz;
+    camPos.z += (tz - camPos.z)*Math.min(1, 2.5*dt);
     camera.position.copy(camPos);
-    const la = camD + 45;
-    camera.lookAt(centerX(la), floorY(la) + 10, -la);
+    pathPos(camD + 45, _pp);
+    camera.lookAt(_pp.x, floorY(camD + 45) + 10, _pp.z);
     camera.fov += (62 - camera.fov)*Math.min(1, 2*dt);
     camera.updateProjectionMatrix();
+    sCam = camD;
     return;
   }
   const back = 7.2 + P.speed*0.085;
@@ -1364,26 +1525,33 @@ function updateCamera(dt){
   const ty = P.y + up;
   const tz = P.z + hz*back;
   if (!camSet){ camPos.set(tx, ty, tz); camSet = true; }
-  camPos.x += (tx - camPos.x)*Math.min(1, 3.0*dt);
+  camPos.x += (tx - camPos.x)*Math.min(1, 4.0*dt);
   camPos.y += (ty - camPos.y)*Math.min(1, 4.0*dt);
-  camPos.z += (tz - camPos.z)*Math.min(1, 6.0*dt);
-  const dCam = -camPos.z;
-  const c = centerX(dCam), hw = halfWidth(dCam);
-  camPos.x = clamp(camPos.x, c - hw + 1.4, c + hw - 1.4);
-  camPos.y = Math.max(camPos.y, groundY(camPos.x, dCam) + 1.6);
+  camPos.z += (tz - camPos.z)*Math.min(1, 4.0*dt);
+  sCam = projectS(camPos.x, camPos.z, sCam + P.speed*dt);
+  let latC = latAt(camPos.x, camPos.z, sCam);
+  const hw = halfWidth(sCam);
+  const latMax = Math.max(1.2, hw - 1.4);
+  if (latC > latMax || latC < -latMax){
+    latC = clamp(latC, -latMax, latMax);
+    pathPos(sCam, _pp);
+    const thC = thetaC(sCam);
+    camPos.x = _pp.x + Math.cos(thC)*latC;
+    camPos.z = _pp.z + Math.sin(thC)*latC;
+  }
+  camPos.y = Math.max(camPos.y, groundAt(latC, sCam) + 1.6);
   camera.position.copy(camPos);
   camera.lookAt(P.x + hx*7, P.y + 0.2, P.z - hz*7);
   const fovT = clamp(62 + (P.speed - TUNE.FORWARD_SPEED)*0.5, 58, 72);
   camera.fov += (fovT - camera.fov)*Math.min(1, 3*dt);
   camera.updateProjectionMatrix();
-  camD = dCam;
+  camD = sCam;
 }
 
 /* --------------------------- HUD ---------------------------- */
 function updateHUD(){
   timeEl.textContent = fmt(timer);
-  const d = -P.z;
-  const margin = clamp((P.y - groundY(P.x, d))/32, 0, 1);
+  const margin = clamp((P.y - groundAt(P.lat, P.s))/32, 0, 1);
   altFill.style.height = (margin*100).toFixed(1) + '%';
   if (state === 'playing' && margin < 0.2) altFill.classList.add('low');
   else altFill.classList.remove('low');
@@ -1405,7 +1573,7 @@ function frame(now){
     if (crashT > 0.9 && oCrash.classList.contains('hidden')) show(oCrash);
   }
 
-  const dFocus = state === 'title' ? camD : -P.z;
+  const dFocus = state === 'title' ? camD : P.s;
   ensureChunks(dFocus);
   spawnEventsTo(dFocus + TUNE.VIEW_DIST);
   spawnThermalsTo(dFocus + TUNE.VIEW_DIST);
