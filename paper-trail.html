@@ -129,11 +129,11 @@ h1{ margin:0 0 16px; font-size:clamp(42px,9vw,82px); font-weight:200;
   <div id="altwrap"><div id="altfill"></div></div>
 </div>
 
-<div id="milestone">Two minutes. Keep flying.</div>
+<div id="milestone">Three minutes. Keep flying.</div>
 
 <div id="o_title" class="overlay">
   <h1>PAPER TRAIL</h1>
-  <p class="tagline">Hit the thermals. Stay up for two minutes.</p>
+  <p class="tagline">Hit the thermals. Stay up for three minutes.</p>
   <p class="press" id="titlepress">Press SPACE to fly</p>
 </div>
 
@@ -146,7 +146,7 @@ h1{ margin:0 0 16px; font-size:clamp(42px,9vw,82px); font-weight:200;
   </div>
   <div id="crash_win" class="card gone">
     <h2>You made it.</h2>
-    <p class="sub">Two minutes on paper wings.</p>
+    <p class="sub">Three minutes on paper wings.</p>
     <p class="flightline">This flight: <span id="winflight">2:00</span></p>
     <div class="rule"></div>
     <p class="offer">Email <b>PAPERTRAIL</b> to
@@ -174,11 +174,11 @@ h1{ margin:0 0 16px; font-size:clamp(42px,9vw,82px); font-weight:200;
 
 <div id="tune" class="gone">
   <p class="tunehead">Flight tuning</p>
-  <div class="trow"><span>Speed</span><input type="range" id="t_spd" min="18" max="36" step="1"><b id="v_spd"></b></div>
+  <div class="trow"><span>Speed</span><input type="range" id="t_spd" min="20" max="60" step="1"><b id="v_spd"></b></div>
   <div class="trow"><span>Gravity</span><input type="range" id="t_grv" min="1" max="4.5" step="0.1"><b id="v_grv"></b></div>
   <div class="trow"><span>Thermal lift</span><input type="range" id="t_lft" min="6" max="16" step="0.5"><b id="v_lft"></b></div>
   <div class="trow"><span>Thermal spacing</span><input type="range" id="t_spc" min="90" max="220" step="5"><b id="v_spc"></b></div>
-  <div class="trow"><span>Canyon width</span><input type="range" id="t_wid" min="20" max="42" step="1"><b id="v_wid"></b></div>
+  <div class="trow"><span>Canyon width</span><input type="range" id="t_wid" min="13" max="42" step="1"><b id="v_wid"></b></div>
   <p class="tunenote">Speed, gravity and lift apply right away. Spacing and width take effect on the next flight.</p>
   <div class="tbtns"><button id="t_reset" type="button">reset</button><button id="t_close" type="button">close</button></div>
 </div>
@@ -193,7 +193,7 @@ h1{ margin:0 0 16px; font-size:clamp(42px,9vw,82px); font-weight:200;
 /* ============================================================
    PAPER TRAIL
    An endless glide for Rose Financial Management.
-   Two minutes earns the t-shirt. After that, see how far.
+   Three minutes earns the t-shirt. After that, see how far.
    All the numbers a playtest will want live in TUNE below.
    ============================================================ */
 
@@ -206,16 +206,17 @@ if (!window.THREE){
 /* ------------------------- TUNING --------------------------- */
 const TUNE = {
   /* The five knobs the first playtest will reach for */
-  FORWARD_SPEED  : 26,    /* cruise speed, units per second */
+  FORWARD_SPEED  : 40,    /* cruise speed, units per second */
   SINK_RATE      : 2.4,   /* baseline altitude loss at cruise, units per second */
   THERMAL_LIFT   : 11,    /* average lift inside a thermal, units per second */
-  THERMAL_SPACING: 156,   /* average gap between thermals, units of distance */
-  CANYON_WIDTH   : 30,    /* average wall to wall width, units */
+  THERMAL_SPACING: 240,   /* average gap between thermals, about 6 s apart */
+  CANYON_WIDTH   : 20,    /* average wall to wall width, units */
 
-  /* Flight feel */
-  SPEED_MIN: 15, SPEED_MAX: 42,
-  DIVE_ACCEL: 14,         /* speed gained per second at full nose down */
-  CLIMB_BLEED: 9,         /* speed lost per second at full pull up */
+  /* Flight feel. The speed band and the two speed rates scale with
+     cruise, so the plane keeps the same handling at any baseline. */
+  SPEED_MIN: 23, SPEED_MAX: 58,
+  DIVE_ACCEL: 21,         /* speed gained per second at full nose down */
+  CLIMB_BLEED: 14,        /* speed lost per second at full pull up */
   SPEED_RELAX: 0.55,      /* drift back toward cruise */
   CLIMB_RATE: 6.5,        /* max climb from pulling up at full speed */
   DIVE_RATE: 9,           /* extra descent from pushing the nose down */
@@ -223,16 +224,16 @@ const TUNE = {
   BANK_MAX: 0.85,         /* radians of visual bank */
 
   /* World */
-  RUN_SECONDS: 120,       /* the t-shirt line; the flight itself is endless */
-  RIM_HEIGHT: 24,         /* average wall height above the floor */
+  RUN_SECONDS: 180,       /* the t-shirt line; the flight itself is endless */
+  RIM_HEIGHT: 30,         /* average wall height above the floor */
   EASE_SECONDS: 15,       /* the extra starting width fades over this long */
-  EASE_WIDTH_BONUS: 9,
-  EVENT_SPACING: 780,     /* base skill check gap, also the 30 s step length */
+  EASE_WIDTH_BONUS: 6,
+  EVENT_SPACING: 1200,    /* base skill check gap, also the 30 s step length */
   EVENT_ACCEL: 0.82,      /* gap multiplier applied at each 30 second step */
-  EVENT_GAP_MIN: 260,     /* skill checks never come closer than this */
-  NARROW_PER_STEP: 0.7,   /* canyon half width lost at each 30 second step */
-  NARROW_STEP_MAX: 7,     /* narrowing stops ratcheting after this many steps */
-  VIEW_DIST: 470,
+  EVENT_GAP_MIN: 400,     /* skill checks never come closer than this */
+  NARROW_PER_STEP: 0.35,  /* canyon half width lost at each 30 second step */
+  NARROW_STEP_MAX: 6,     /* narrowing stops ratcheting after this many steps */
+  VIEW_DIST: 950,         /* spawn horizon; stays past the fog even across bends */
   COLLISION_SLACK: 0.45,  /* forgiveness at the walls */
   FLOOR_MARGIN: 0.35      /* forgiveness at the floor */
 };
@@ -315,7 +316,7 @@ function latAt(x, z, s){
   return (x - _pp.x)*Math.cos(th) + (z - _pp.z)*Math.sin(th);
 }
 
-/* Gentle ramp inside the first two minutes */
+/* Gentle ramp early in the flight */
 function diffK(d){ return Math.min(1, Math.max(0, d - runStartD)/2800); }
 /* The endless ramp. Zero until the two minute mark, then climbs. */
 function lateK(d){
@@ -337,7 +338,7 @@ function steps(d){
    multiplies the gap by EVENT_ACCEL down to EVENT_GAP_MIN. Types:
    0 squeeze, 1 arch, 2 pillars. Tight bends and the opening check
    are always squeezes, never meshes.                             */
-let evD = [], evT = [], nextEventI = 0;
+let evD = [], evT = [], evQ = [], nextEventI = 0;
 function ensureEvents(dMax){
   while (!evD.length || evD[evD.length - 1] < dMax + 200){
     const prev = evD.length ? evD[evD.length - 1] : runStartD;
@@ -345,11 +346,14 @@ function ensureEvents(dMax){
       ? Math.max(TUNE.EVENT_GAP_MIN, TUNE.EVENT_SPACING*Math.pow(TUNE.EVENT_ACCEL, steps(prev + 120)))
       : TUNE.EVENT_SPACING;
     const D = prev + g;
+    const kapE = Math.abs(kappaAt(D));
     let ty;
     if (!evD.length) ty = 0;
-    else if (Math.abs(kappaAt(D)) > 0.010) ty = 0;
+    else if (kapE > 0.010) ty = 0;
     else ty = Math.floor(hash(D*0.113 + 4.2)*3) % 3;
-    evD.push(D); evT.push(ty);
+    /* a squeeze landing on a bend runs shallower, since the bend
+       itself is already the skill check                          */
+    evD.push(D); evT.push(ty); evQ.push(1 - Math.min(0.55, kapE*30));
   }
 }
 function eventNear(d){
@@ -367,20 +371,23 @@ function squeezeFactor(d){
   const u = Math.abs(d - evD[i])/95;
   if (u >= 1) return 1;
   const bump = 1 - u*u*(3 - 2*u);
-  const depth = 0.42 + 0.12*lateK(d);
+  const depth = (0.42 + 0.12*lateK(d))*evQ[i];
   return 1 - depth*bump;
 }
 
 function halfWidth(d){
+  /* the wall wobble and the late shrink scale with the canyon so
+     the shape of the place is the same at any baseline width     */
+  const ws = TUNE.CANYON_WIDTH/30;
   let w = TUNE.CANYON_WIDTH*0.5
-        + Math.sin(d*0.0087 + S[3])*3.6
-        + Math.sin(d*0.023  + S[4])*2.6;
+        + (Math.sin(d*0.0087 + S[3])*3.6
+         + Math.sin(d*0.023  + S[4])*2.6)*ws;
   const rd = Math.max(0, d - runStartD);
   w += TUNE.EASE_WIDTH_BONUS * (1 - Math.min(1, rd/(TUNE.FORWARD_SPEED*TUNE.EASE_SECONDS)));
   w -= TUNE.NARROW_PER_STEP*Math.min(TUNE.NARROW_STEP_MAX, steps(d));
-  w -= 3.5*lateK(d);
+  w -= 3.5*ws*lateK(d);
   w *= squeezeFactor(d);
-  return Math.max(9.2, w);
+  return Math.max(6.5, w);
 }
 function floorY(d){
   return Math.sin(d*0.0061 + S[5])*2.6 + Math.sin(d*0.017 + S[6])*1.4;
@@ -409,7 +416,7 @@ document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = C_MINT.clone().lerp(C_PAPER, 0.5);
-scene.fog = new THREE.Fog(C_MINT.clone().lerp(C_PAPER, 0.5), 65, 460);
+scene.fog = new THREE.Fog(C_MINT.clone().lerp(C_PAPER, 0.5), 70, 540);
 
 const camera = new THREE.PerspectiveCamera(62, window.innerWidth/window.innerHeight, 0.1, 1400);
 
@@ -559,6 +566,10 @@ function rowProfile(d){
     arr[arr.length-1].y = rim;
     const hm = hash(d*2.31 + side*91.7);
     arr.push({ off: side*Math.min(hw + out + 30 + hm*14, maxOff + 10), y: rim + 1.2 + hm*2.5 });
+    /* a distant highland ridge behind the mesa, so looking over
+       the rim from max altitude meets terrain instead of void   */
+    const hm2 = hash(d*4.87 + side*53.9);
+    arr.push({ off: side*Math.min(hw + out + 84 + hm2*34, maxOff + 24), y: rim + 12 + hm2*10 });
     sides.push(arr);
   }
   return { d:d, hw:hw, fl:fl, sides:sides };
@@ -716,7 +727,7 @@ function buildChunk(ci){
     for (let s = 0; s < 2; s++){
       const a = A.p.sides[s], b = B.p.sides[s];
       for (let t = 0; t < a.length - 1; t++){
-        const isMesa = (t === a.length - 2);
+        const isMesa = (t >= a.length - 3);
         wallColor(tmpC, isMesa, (t + 0.5)/WALL_RINGS, a[t].y, A.p.d*1.7 + t*13.1 + s*7.7);
         const w00 = W(A, a[t].off), w01 = W(A, a[t+1].off);
         const w10 = W(B, b[t].off), w11 = W(B, b[t+1].off);
@@ -772,14 +783,57 @@ let obstacles = [];
 
 function makeArch(D){
   const hw = halfWidth(D), fl = floorY(D);
-  const underY = fl + 9.5 - 1.5*lateK(D);
-  const topY = fl + 20;
   pathPos(D, _pp);
   const bx = _pp.x, bz = _pp.z;
   const th = thetaC(D);
   const lx = Math.cos(th), lz = Math.sin(th);   /* lateral axis  */
   const tx = Math.sin(th), tz = -Math.cos(th);  /* along axis    */
   const pos = [], uv = [], col = [];
+  if (hash(D*0.517 + 2.9) < 0.5){
+    /* A genuine arch: a rock ribbon swept over a half ellipse,
+       thick at the haunches, open right up under the curve.     */
+    const aIn = hw - 1.2;                 /* opening half span   */
+    const bH = 12.5 - 1.5*lateK(D);       /* opening apex height */
+    const aOut = aIn + 3.0, bOut = bH + 3.8;
+    const NA = 10;
+    const ring = [];
+    for (let i = 0; i <= NA; i++){
+      const t = (i/NA)*Math.PI;
+      const ct = Math.cos(t), st = Math.sin(t);
+      const jr = hash(D*0.83 + i*7.31) - 0.5;
+      ring.push({
+        iu: aIn*ct + jr*0.7, iy: fl - 1.5 + (bH + 1.5)*st + jr*0.5,
+        ou: (aOut + jr*0.9)*ct, oy: fl - 1.5 + (bOut + 1.5 + jr*0.9)*st
+      });
+    }
+    const faces = [
+      [0,2,1],[0,3,2], [4,5,6],[4,6,7],
+      [0,1,5],[0,5,4], [3,6,2],[3,7,6],
+      [0,7,3],[0,4,7], [1,2,6],[1,6,5]
+    ];
+    for (let i = 0; i < NA; i++){
+      const r0 = ring[i], r1 = ring[i+1];
+      const vh = 1.8 + hash(D*1.19 + i*3.7)*0.7;
+      const q = [[r0.ou, r0.oy], [r1.ou, r1.oy], [r1.iu, r1.iy], [r0.iu, r0.iy]];
+      const v = [];
+      for (const vv of [-vh, vh])
+        for (let k = 0; k < 4; k++)
+          v.push([bx + lx*q[k][0] + tx*vv, q[k][1], bz + lz*q[k][0] + tz*vv]);
+      for (let f = 0; f < faces.length; f++){
+        const fy = (v[faces[f][0]][1] + v[faces[f][1]][1] + v[faces[f][2]][1])/3;
+        wallColor(tmpC, false, clamp((fy - fl)/(bOut + 2), 0.08, 1), fy, D*2.9 + i*11.3 + f*3.7);
+        const A = v[faces[f][0]], B = v[faces[f][1]], C = v[faces[f][2]];
+        facePush(pos,uv,col, A[0],A[1],A[2], B[0],B[1],B[2], C[0],C[1],C[2]);
+      }
+    }
+    const mesh = finishRock(pos, uv, col);
+    scene.add(mesh);
+    obstacles.push({ kind:'arch', curved:true, d:D, fl:fl,
+      a:aIn, bH:bH, aOut:aOut, bOut:bOut, mesh:mesh });
+    return;
+  }
+  const underY = fl + 9.5 - 1.5*lateK(D);
+  const topY = fl + 20;
   function jbox(u0, u1, y0, y1, v0, v1, key){
     /* Irregular box in canyon local frame: u across, v along */
     const j = function(v, kk){ return v + (hash(key + kk)-0.5)*0.8; };
@@ -809,21 +863,28 @@ function makeArch(D){
   jbox(hw - 2.6, hw + 0.6, fl - 1.5, underY + 0.6, -2, 2, D*1.93);   /* right leg */
   const mesh = finishRock(pos, uv, col);
   scene.add(mesh);
-  obstacles.push({ kind:'arch', d:D, underY:underY, topY:topY,
+  obstacles.push({ kind:'arch', curved:false, d:D, underY:underY, topY:topY,
     legL: -hw + 0.9, legR: hw - 0.9, mesh:mesh });
 }
 
 function makePillars(D){
   const hw = halfWidth(D), fl = floorY(D);
   const topY = Math.max(rimY(D,-1), rimY(D,1)) + 3;
-  /* Pillar lanes adapt to the narrowing canyon: the center gap
-     stays flyable at any width, and the three pillar wall only
-     appears where there is room for two honest routes.          */
-  const count = (lateK(D) > 0.55 && hw >= 14) ? 3 : 2;
+  /* Pillar lanes adapt to the canyon: three pillars only where
+     there is room for two honest routes, two where the wall lane
+     still clears, and a single pillar in the tightest canyons so
+     there is always a real way through.                          */
   const slotMag = Math.max(0.42, Math.min(0.62, 4.95/hw));
-  const slots = count === 2
+  const wallClear = hw - hw*slotMag - 2.0;
+  let count;
+  if (lateK(D) > 0.55 && hw >= 14) count = 3;
+  else if (wallClear >= 1.4) count = 2;
+  else count = 1;
+  const slots = count === 3
+    ? [-0.55, 0.02 + (hash(D*0.61)-0.5)*0.1, 0.56]
+    : count === 2
     ? [-slotMag + (hash(D*0.37)-0.5)*0.08, slotMag + (hash(D*0.61)-0.5)*0.08]
-    : [-0.55, 0.02 + (hash(D*0.61)-0.5)*0.1, 0.56];
+    : [(hash(D*0.37) < 0.5 ? -1 : 1)*(0.26 + hash(D*0.61)*0.12)];
   pathPos(D, _pp);
   const bx = _pp.x, bz = _pp.z;
   const th = thetaC(D);
@@ -831,10 +892,14 @@ function makePillars(D){
   const tx = Math.sin(th), tz = -Math.cos(th);
   const pos = [], uv = [], col = [];
   const xs = [];
+  let maxR = 0;
   for (let p = 0; p < slots.length; p++){
     const plat = hw*slots[p];
     xs.push(plat);
-    const R = 2.0 + hash(D*0.93 + p*7)*0.7;
+    /* keep both the center gap and the wall lane flyable */
+    let R = 2.0 + hash(D*0.93 + p*7)*0.7;
+    R = Math.max(1.5, Math.min(R, Math.abs(plat) - 2.2, hw - Math.abs(plat) - 2.0));
+    maxR = Math.max(maxR, R);
     const yb = fl - 1, ym = fl + (topY - fl)*0.55, yt = topY;
     const NSEG = 6;
     function ring(y, r, key){
@@ -868,7 +933,7 @@ function makePillars(D){
   }
   const mesh = finishRock(pos, uv, col);
   scene.add(mesh);
-  obstacles.push({ kind:'pillars', d:D, xs:xs, r:2.7, topY:topY, mesh:mesh });
+  obstacles.push({ kind:'pillars', d:D, xs:xs, r:maxR + 0.3, topY:topY, mesh:mesh });
 }
 
 function spawnEventsTo(dMax){
@@ -920,28 +985,37 @@ function makeThermal(d){
        though the guarantee fades as the 30 second steps stack up */
     postEvent = false;
     const sd = Math.min(6, steps(d));
-    R = 6.5 + h1*2 - sd*0.42;
+    R = 5.8 + h1*1.8 - sd*0.55;
     str = TUNE.THERMAL_LIFT*Math.max(0.95, 1.1 - sd*0.03);
     xoff = (h2 - 0.5)*Math.min(1.4, 0.7 + sd*0.12);
   } else if (friendly > 0){
     friendly--;
-    R = 8 + h1*2.5;
+    R = 7 + h1*2;
     str = TUNE.THERMAL_LIFT*1.05;
     xoff = (h2 - 0.5)*0.35;
   } else {
-    R = (3.6 + h1*4.6)*(1 - 0.12*lateK(d));
-    str = lerp(TUNE.THERMAL_LIFT*1.30, TUNE.THERMAL_LIFT*0.85, (R - 3.6)/4.6)*(0.9 + 0.2*h3);
+    const rb = 3.2 + h1*3.6;
+    R = rb*(1 - 0.12*lateK(d));
+    str = lerp(TUNE.THERMAL_LIFT*1.30, TUNE.THERMAL_LIFT*0.85, (rb - 3.2)/3.6)*(0.9 + 0.2*h3);
     xoff = (h2 - 0.5)*2.2;
   }
   const hw = halfWidth(d), fl = floorY(d);
   /* thermals lean toward the walls on straights but stay near
      the middle of tight bends so every ride is reachable        */
   const bendPull = 1 - Math.min(0.5, Math.abs(kappaAt(d))*24);
-  const lat = clamp(xoff, -1, 1)*Math.max(0, hw - R*0.5 - 1.6)*bendPull;
+  /* a thermal shortly before a skill check sits near center so it
+     lines you up for the slot instead of parking you on a wall   */
+  let squeezePull = 1;
+  const ei2 = eventNear(d + 80);
+  if (ei2 >= 0 && evD[ei2] > d && evD[ei2] - d < 130) squeezePull = 0.55;
+  const lat = clamp(xoff, -1, 1)*Math.max(0, hw - R*0.5 - 1.6)*bendPull*squeezePull;
   const topY = Math.max(rimY(d,-1), rimY(d,1)) + 5;
+  /* lift quits just below the lower rim, so the ceiling of the
+     flight stays inside the canyon walls                        */
+  const liftTop = Math.min(rimY(d,-1), rimY(d,1)) - 2;
   const baseY = fl - 1;
   const H = topY - baseY;
-  const elong = 2.1 + h3*1.1;
+  const elong = 2.6 + h3*1.3;
 
   const mesh = new THREE.Mesh(unitThermGeo, thermMat);
   mesh.scale.set(R, H, R*elong);
@@ -951,7 +1025,7 @@ function makeThermal(d){
   mesh.rotation.y = -th;
   mesh.renderOrder = 2;
   scene.add(mesh);
-  thermals.push({ d:d, lat:lat, R:R, elong:elong, str:str, baseY:baseY, topY:topY, mesh:mesh });
+  thermals.push({ d:d, lat:lat, R:R, elong:elong, str:str, baseY:baseY, topY:topY, liftTop:liftTop, mesh:mesh });
 }
 
 function spawnThermalsTo(dMax){
@@ -1371,7 +1445,7 @@ function startRun(fullReset){
   P.speed = TUNE.FORWARD_SPEED; P.pitchS = 0; P.turnS = 0;
   plane.visible = true;
   nextThermalD = runStartD + 110;
-  evD.length = 0; evT.length = 0; nextEventI = 0;
+  evD.length = 0; evT.length = 0; evQ.length = 0; nextEventI = 0;
   friendly = 2;
   postEvent = false;
   timer = 0;
@@ -1440,9 +1514,9 @@ function updateFlight(dt){
     const du = (P.lat - t.lat)/(t.R + 1);
     const dv = (P.s - t.d)/(t.R*t.elong + 1);
     const rr = Math.sqrt(du*du + dv*dv);
-    if (rr < 1.18 && P.y > t.baseY - 2 && P.y < t.topY){
+    if (rr < 1.18 && P.y > t.baseY - 2 && P.y < t.liftTop){
       let f = clamp((1.18 - rr)/0.62, 0, 1);
-      if (P.y > t.topY - 6) f *= (t.topY - P.y)/6;
+      if (P.y > t.liftTop - 6) f *= (t.liftTop - P.y)/6;
       const s = t.str*f;
       if (s > bestLift){ bestLift = s; pull = (t.lat - P.lat)*0.5*f; }
     }
@@ -1476,9 +1550,18 @@ function updateFlight(dt){
     if (Math.abs(o.d - d) > 3.2) continue;
     if (o.kind === 'arch'){
       if (Math.abs(o.d - d) < 2.4){
-        if (P.y > o.underY - 0.2 && P.y < o.topY + 0.2){ crash(); return; }
-        if (P.y < o.underY &&
-            (Math.abs(P.lat - o.legL) < 2.2 || Math.abs(P.lat - o.legR) < 2.2)){ crash(); return; }
+        if (o.curved){
+          /* rock lives between the inner and outer half ellipses */
+          const qa = Math.abs(P.lat)/o.a;
+          const openY = qa < 1 ? o.fl + o.bH*Math.sqrt(1 - qa*qa) : o.fl;
+          const qo = Math.abs(P.lat)/o.aOut;
+          const crownY = qo < 1 ? o.fl + o.bOut*Math.sqrt(1 - qo*qo) : o.fl;
+          if (P.y > openY - 0.2 && P.y < crownY + 0.2){ crash(); return; }
+        } else {
+          if (P.y > o.underY - 0.2 && P.y < o.topY + 0.2){ crash(); return; }
+          if (P.y < o.underY &&
+              (Math.abs(P.lat - o.legL) < 2.2 || Math.abs(P.lat - o.legR) < 2.2)){ crash(); return; }
+        }
       }
     } else {
       if (Math.abs(o.d - d) < 2.8){
