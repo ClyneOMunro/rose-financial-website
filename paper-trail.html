@@ -276,9 +276,14 @@ let runStartD = 0;
 const PATH_STEP = 3;
 function thetaC(s){
   const env = smooth(60, 360, s);
-  return env*(2.2*Math.sin(s/330 + S[0])
+  const raw = env*(2.2*Math.sin(s/330 + S[0])
             + 0.85*Math.sin(s/150 + S[1])
             + 0.30*Math.sin(s/60 + S[2]));
+  /* soft cap on the heading swing. past 90 degrees the course
+     could double back and lay a far section of canyon straight
+     across this one, a wall you fly through. capped, the canyon
+     always makes forward progress and can never self overlap    */
+  return 1.5*Math.tanh(raw/1.5);
 }
 function kappaAt(s){ return (thetaC(s + 2) - thetaC(s - 2))/4; }
 function ensurePath(sMax){
@@ -549,9 +554,15 @@ function rowProfile(d){
     const baseY = fl + 2.4;
     const span = Math.max(1, rim - baseY);
     /* on the inside of a bend, pull the outer skirt in so the
-       terrain cannot fold over itself around the turn           */
-    const inner = side*kap > 0;
-    const maxOff = inner ? Math.max(hw + 5, 0.8/Math.max(1e-5, Math.abs(kap))) : 1e9;
+       terrain cannot fold over itself around the turn. the wide
+       skirts reach far, so scan for the sharpest bend nearby
+       rather than trusting the local sample alone               */
+    let kIn = 0;
+    for (let k = -120; k <= 120; k += 30){
+      const kk = kappaAt(d + k);
+      if (side*kk > 0 && Math.abs(kk) > kIn) kIn = Math.abs(kk);
+    }
+    const maxOff = kIn > 1e-5 ? Math.max(hw + 5, 0.72/kIn) : 1e9;
     const arr = [];
     let out = 0;
     for (let t = 0; t <= WALL_RINGS; t++){
@@ -565,11 +576,11 @@ function rowProfile(d){
       if (arr[t].y < arr[t-1].y + 0.4) arr[t].y = arr[t-1].y + 0.4;
     arr[arr.length-1].y = rim;
     const hm = hash(d*2.31 + side*91.7);
-    arr.push({ off: side*Math.min(hw + out + 30 + hm*14, maxOff + 10), y: rim + 1.2 + hm*2.5 });
+    arr.push({ off: side*Math.min(hw + out + 30 + hm*14, maxOff), y: rim + 1.2 + hm*2.5 });
     /* a distant highland ridge behind the mesa, so looking over
        the rim from max altitude meets terrain instead of void   */
     const hm2 = hash(d*4.87 + side*53.9);
-    arr.push({ off: side*Math.min(hw + out + 84 + hm2*34, maxOff + 24), y: rim + 12 + hm2*10 });
+    arr.push({ off: side*Math.min(hw + out + 62 + hm2*24, maxOff), y: rim + 12 + hm2*10 });
     sides.push(arr);
   }
   return { d:d, hw:hw, fl:fl, sides:sides };
