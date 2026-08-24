@@ -1,0 +1,50 @@
+name: Site check
+
+# Runs on every push to main, and can be started by hand from the Actions tab.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: site-check
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the site
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history, so lastmod dates are real commit dates
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Regenerate sitemap.xml
+        run: python3 .github/scripts/check_site.py . --fix-sitemap
+
+      - name: Commit the sitemap if it changed
+        run: |
+          if [ -n "$(git status --porcelain sitemap.xml)" ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add sitemap.xml
+            git commit -m "Regenerate sitemap [skip ci]"
+            git push
+            echo "sitemap updated" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "sitemap already current" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Run the checks
+        run: python3 .github/scripts/check_site.py . | tee $GITHUB_STEP_SUMMARY
+
+      - name: Tell IndexNow what changed
+        if: success()
+        run: python3 .github/scripts/indexnow_ping.py .
