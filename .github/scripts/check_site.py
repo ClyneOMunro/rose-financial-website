@@ -20,6 +20,11 @@ from urllib.parse import unquote, urlparse
 DOMAIN = "rosefinancialmanagement.com"
 UNPROVISIONED_EMAIL = "kevin@rosefinancialmanagement.com"
 REQUIRED_FILES = ["CNAME", "404.html", "robots.txt", "sitemap.xml", "index.html"]
+# Pages served but never listed in the sitemap. Only the error page belongs
+# here. paper-trail.html was considered and deliberately left OUT of this set
+# (Aug 24): it is unlinked from site navigation, which keeps it word-of-mouth,
+# but it stays indexable so someone who half-remembers it can search for it.
+UNLISTED = {"404.html"}
 SKIP_DIRS = {".git", ".github", "node_modules", ".idea", ".vscode"}
 INTERNAL_EXT = {".md", ".py", ".sh", ".docx", ".xlsx", ".pptx", ".zip", ".bak", ".log"}
 INTERNAL_NAME_RE = re.compile(
@@ -142,10 +147,11 @@ def check_page(root: Path, path: Path, plausible_seen: list):
 
     if re.search(r'plausible', raw, re.I):
         plausible_seen.append(rel)
-    if not re.search(r'<link[^>]+rel\s*=\s*["\']canonical', raw, re.I):
-        warn(f"{rel}: no canonical tag")
-    if not re.search(r'<meta[^>]+name\s*=\s*["\']description', raw, re.I):
-        warn(f"{rel}: no meta description")
+    if rel != "404.html":
+        if not re.search(r'<link[^>]+rel\s*=\s*["\']canonical', raw, re.I):
+            warn(f"{rel}: no canonical tag")
+        if not re.search(r'<meta[^>]+name\s*=\s*["\']description', raw, re.I):
+            warn(f"{rel}: no meta description")
     for m in re.finditer(r"<img\b[^>]*>", raw, re.I):
         if not re.search(r'\balt\s*=', m.group(0), re.I):
             warn(f"{rel}: <img> without alt text")
@@ -184,7 +190,7 @@ def site_urls(root: Path):
         if p.suffix.lower() not in (".html", ".pdf"):
             continue
         rel = p.relative_to(root).as_posix()
-        if rel == "404.html":
+        if rel in UNLISTED:
             continue
         if p.name == "index.html":
             rel = rel[: -len("index.html")]
@@ -279,6 +285,10 @@ def main():
     for b in blocks:
         print(f"BLOCK  {b}")
     print(f"\n{len(pages)} pages checked · {len(blocks)} blocking · {len(warns)} warnings")
+    if args.fix_sitemap:
+        # Regeneration must not fail the build, or the commit step never runs
+        # and the rebuilt sitemap is thrown away. The later check step gates.
+        sys.exit(0)
     sys.exit(1 if blocks else 0)
 
 
