@@ -25,6 +25,21 @@ REQUIRED_FILES = ["CNAME", "404.html", "robots.txt", "sitemap.xml", "index.html"
 # (Aug 24): it is unlinked from site navigation, which keeps it word-of-mouth,
 # but it stays indexable so someone who half-remembers it can search for it.
 UNLISTED = {"404.html"}
+
+# --- Rollover disclosure (38-LPL) ---------------------------------------
+# LPL requires the four-option disclosure, verbatim, on any material that
+# discusses IRA rollovers. Flagged by Ken Lam in ART, Jul 21 2026.
+# Detected by a distinctive fragment so wrapping and punctuation can vary.
+ROLLOVER_RE = re.compile(r"\broll(ing|ed|s)?[ -]?(it |the |your |over\b)|\brollover", re.I)
+DISCLOSURE_SENTINEL = "typically has four options"
+
+# Superseded three-option framing. Corrected sitewide Jul 25 2026 but it
+# survived in meta tags, which is what Google prints as the search snippet.
+BANNED_PHRASES = [
+    "keep it, roll it, or split it",
+    "keep, roll, or split",
+    "keep it, roll it or split it",
+]
 SKIP_DIRS = {".git", ".github", "node_modules", ".idea", ".vscode"}
 INTERNAL_EXT = {".md", ".py", ".sh", ".docx", ".xlsx", ".pptx", ".zip", ".bak", ".log"}
 INTERNAL_NAME_RE = re.compile(
@@ -107,6 +122,18 @@ def check_page(root: Path, path: Path, plausible_seen: list):
 
     if UNPROVISIONED_EMAIL in raw.lower():
         block(f"{rel}: unprovisioned RFM email address present")
+
+    low = raw.lower()
+    for phrase in BANNED_PHRASES:
+        if phrase in low:
+            block(f"{rel}: superseded three-option TSP framing {phrase!r} "
+                  f"(check meta, og and twitter description tags, not just body copy)")
+
+    # Rollover content must carry the 38-LPL disclosure verbatim. Checked
+    # against the whole file so meta tags count as discussing it too.
+    if ROLLOVER_RE.search(raw) and DISCLOSURE_SENTINEL not in low:
+        block(f"{rel}: discusses rollovers without the 38-LPL four-option "
+              f"disclosure (required verbatim, not paraphrased)")
 
     # Absolute self-links in <a> and asset tags only. Canonical, og:url and
     # schema URLs are *required* to be absolute, so they are not faults.
