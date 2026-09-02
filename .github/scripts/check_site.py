@@ -189,8 +189,15 @@ def check_page(root: Path, path: Path, plausible_seen: list):
             if not dest.exists():
                 block(f"{rel}: broken link -> {target}")
 
-    if re.search(r'plausible', raw, re.I):
-        plausible_seen.append(rel)
+    # A complete Plausible install is two tags: the library and an init call.
+    # The library alone loads and silently sends nothing, which is exactly the
+    # partial install this check exists to catch. Shipped on one page Sep 2026.
+    if re.search(r'plausible\.io/js/', raw, re.I):
+        if 'plausible.init(' in raw:
+            plausible_seen.append(rel)
+        else:
+            block(f"{rel}: Plausible library loaded without plausible.init(). "
+                  f"The script loads and records nothing.")
     if rel != "404.html":
         if not re.search(r'<link[^>]+rel\s*=\s*["\']canonical', raw, re.I):
             warn(f"{rel}: no canonical tag")
