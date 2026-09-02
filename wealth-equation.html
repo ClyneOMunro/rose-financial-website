@@ -131,6 +131,27 @@ html:not(.js) .weq-phases{display:none;}
   .weq-hint{text-align:center;}
 }
 
+/* --- CTA band ---
+   On this page the CTA sits outside .article-body, so it spans the full
+   window rather than inheriting the 820px measure other pages get. The
+   .cta-inner wrapper was added to re-constrain the content and never had
+   a rule written for it, which left the text hard against the left edge.
+   Full-bleed band, centred content, matching the equation board above. */
+.article-cta{border-radius:0;}
+.article-cta .cta-inner{max-width:820px;margin-left:auto;margin-right:auto;}
+@media(min-width:1080px){
+  .article-cta{padding:56px max(32px, calc(50vw - 700px));}
+}
+
+/* --- caption alignment ---
+   .weq-caption lives inside the full-bleed board, so it starts at the band's
+   padding edge, far left of everything else on the page. Constrain it to the
+   same 660px reading column the prose uses so the two line up. The equation
+   row itself still spans the full band. */
+@media(min-width:1080px){
+  .weq-caption{max-width:660px;margin-left:auto;margin-right:auto;}
+}
+
 </style>
 
 <!-- AEO metadata (changeset AEO-01 pattern, applied to new page July 22 2026).
@@ -320,7 +341,7 @@ html:not(.js) .weq-phases{display:none;}
   <div class="cta-inner">
     <span class="eyebrow">How Rose Financial can help</span>
     <h2>Five variables.<br><em>We work all of them.</em></h2>
-    <p>A discovery call is a conversation about where you actually are in this equation, which variables could use the most attention, and what your plan needs to do. No cost, no obligation, and no pressure to decide anything on the call. We’ll know I we’re a good fit for each other.</p>
+    <p>A discovery call is a conversation about where you actually are in this equation, which variables could use the most attention, and what your plan needs to do. No cost, no obligation, and no pressure to decide anything on the call. We’ll know if we’re a good fit for each other.</p>
     <a class="btn btn--solid" href="contact.html">Book a Discovery Call</a>
   </div>
 </div>
