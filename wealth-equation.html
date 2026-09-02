@@ -138,7 +138,10 @@ html:not(.js) .weq-phases{display:none;}
    a rule written for it, which left the text hard against the left edge.
    Full-bleed band, centred content, matching the equation board above. */
 .article-cta{border-radius:0;}
-.article-cta .cta-inner{max-width:820px;margin-left:auto;margin-right:auto;}
+.article-cta .cta-inner{max-width:660px;margin-left:auto;margin-right:auto;}
+/* 660px, not 820px: .article-body is 820 wide *including* 80px of padding
+   each side, so its text column is 660. Matching 820 here put the CTA
+   80px left of every other block on the page. */
 @media(min-width:1080px){
   .article-cta{padding:56px max(32px, calc(50vw - 700px));}
 }
