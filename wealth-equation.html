@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Wealth Equation: What a Financial Advisor Actually Does | Rose Financial Management</title>
+<meta name="description" content="Wealth comes down to one equation with five variables. Here is what each one means, which ones you control, and where a financial advisor actually does the work.">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+
+<!-- COMPLIANCE: DRAFT. New page, not part of the v2.5 submission. Requires LPL/CCO review
+     before publication (POM 6.3). No figures, no performance claims, no third-party research
+     cited: the Russell and Vanguard value studies are stamped for financial-professional use
+     only and must not appear in client-facing material. -->
+
+<style>
+/* ---------- Wealth Equation (page-specific) ---------- */
+.weq{margin:0 0 10px;}
+.weq-phases{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px;}
+html:not(.js) .weq-phases{display:none;}
+.weq-phase{
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  padding:9px 18px;background:transparent;color:var(--gray);
+  border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
+}
+.weq-phase:hover{background:var(--light-teal);border-color:var(--muted);}
+.weq-phase.is-active{background:var(--navy);color:var(--white);border-color:var(--navy);}
+.weq-phase:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+
+.weq-board{
+  background:var(--navy);border-radius:var(--radius);
+  padding:38px 30px 30px;margin-bottom:8px;
+}
+.weq-caption{
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mint);margin-bottom:22px;display:block;
+}
+.weq-row{
+  display:flex;flex-wrap:wrap;align-items:flex-start;
+  gap:6px 10px;justify-content:flex-start;
+}
+.weq-op{
+  font-family:var(--serif);font-size:34px;line-height:1;color:var(--muted);
+  padding-top:6px;flex:0 0 auto;
+}
+.weq-term{
+  background:transparent;border:1px solid transparent;border-radius:var(--radius);
+  padding:6px 10px 8px;cursor:pointer;text-align:left;flex:0 0 auto;
+  transition:background .15s ease,border-color .15s ease;
+}
+.weq-term:hover{background:rgba(255,255,255,.06);border-color:rgba(173,219,194,.4);}
+.weq-term:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+.weq-term.is-active{background:rgba(97,192,142,.14);border-color:var(--teal);}
+.weq-name{
+  display:block;font-family:var(--serif);font-size:34px;line-height:1.05;font-weight:400;
+}
+.weq-sub{
+  display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);margin-top:6px;
+}
+.weq-term[data-key="inflow"] .weq-name{color:var(--white);}
+.weq-term[data-key="outflow"] .weq-name{color:#e08a70;}
+.weq-term[data-key="savings"] .weq-name{color:var(--mint);}
+.weq-term[data-key="perf"] .weq-name{color:var(--teal);}
+.weq-hint{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);margin-top:20px;
+}
+.weq-detail{
+  border:1px solid var(--border);border-left:3px solid var(--teal);
+  border-radius:0 var(--radius) var(--radius) 0;
+  padding:22px 26px;background:var(--offwhite);margin-bottom:34px;
+}
+.weq-detail h3{margin:0 0 6px;font-size:21px;}
+.weq-detail .weq-plain{
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--forest);margin:0 0 12px;
+}
+.weq-detail p{margin:0 0 10px;}
+.weq-detail p:last-child{margin-bottom:0;}
+.weq-detail .weq-work{font-weight:500;color:var(--navy);}
+@media(max-width:700px){
+  .weq-name{font-size:26px;}
+  .weq-op{font-size:26px;}
+  .weq-board{padding:28px 20px 22px;}
+}
+
+/* --- full-bleed equation band --- */
+@media(min-width:1080px){
+  .article-body .weq{width:auto;margin-left:0;transform:none;}
+}
+.weq-board{
+  width:100vw;
+  margin-left:calc(50% - 50vw);
+  border-radius:0;
+  padding:52px max(32px, calc(50vw - 700px)) 40px;
+}
+.weq-row{justify-content:center;}
+@media(min-width:1080px){
+  .article-body .weq-phases,.article-body .weq-hint,.article-body .weq-detail{
+    max-width:660px;margin-left:auto;margin-right:auto;}
+  .weq-hint{margin-top:26px;}
+}
+@media(min-width:1500px){.weq-name{font-size:38px;}.weq-op{font-size:38px;}}
+.weq-term[data-key="time"] .weq-name{color:var(--white);}
+
+/* --- mobile: stack the equation instead of wrapping it ---
+   Five terms plus four operators cannot fit a phone width. Wrapping leaves
+   operators dangling at line ends and the reading order stops being obvious.
+   Below 700px the equation reads top to bottom, one row per element, which
+   also gives every term a full-width tap target. */
+@media(max-width:700px){
+  .weq-row{flex-direction:column;align-items:stretch;gap:0;}
+  .weq-term{
+    width:100%;text-align:center;padding:12px 8px 14px;
+    border-radius:var(--radius);
+  }
+  .weq-term:active{background:rgba(255,255,255,.06);}
+  .weq-op{
+    padding:2px 0;font-size:20px;text-align:center;width:100%;
+    opacity:.45;line-height:1;
+  }
+  .weq-name{font-size:28px;}
+  .weq-sub{margin-top:4px;}
+  .weq-board{padding:26px 18px 20px;}
+  .weq-caption{text-align:center;}
+  .weq-hint{text-align:center;}
+}
+
+</style>
+
+<!-- AEO metadata (changeset AEO-01 pattern, applied to new page July 22 2026).
+     No postal address by design: the office is not a registered LPL branch (POM v1.46). -->
+<link rel="canonical" href="https://rosefinancialmanagement.com/wealth-equation.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rose Financial Management">
+<meta property="og:title" content="The Wealth Equation: What a Financial Advisor Actually Does | Rose Financial Management">
+<meta property="og:description" content="Wealth comes down to one equation with five variables. Here is what each one means, which ones you control, and where a financial advisor actually does the work.">
+<meta property="og:url" content="https://rosefinancialmanagement.com/wealth-equation.html">
+<meta property="og:image" content="https://rosefinancialmanagement.com/assets/logo-horz-color.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Wealth Equation: What a Financial Advisor Actually Does | Rose Financial Management">
+<meta name="twitter:description" content="Wealth comes down to one equation with five variables. Here is what each one means, which ones you control, and where a financial advisor actually does the work.">
+<meta name="twitter:image" content="https://rosefinancialmanagement.com/assets/logo-horz-color.jpg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": [
+        "FinancialService",
+        "ProfessionalService"
+      ],
+      "@id": "https://rosefinancialmanagement.com/#organization",
+      "name": "Rose Financial Management",
+      "url": "https://rosefinancialmanagement.com/",
+      "logo": "https://rosefinancialmanagement.com/assets/logo-horz-color.jpg",
+      "image": "https://rosefinancialmanagement.com/assets/logo-horz-color.jpg",
+      "telephone": "+1-628-212-8990",
+      "email": "Kevin@RoseFinancialManagement.com",
+      "areaServed": {
+        "@type": "Country",
+        "name": "US"
+      },
+      "disambiguatingDescription": "Rose Financial Management is the DBA of Kevin Rose, a Registered Representative with LPL Financial, member FINRA/SIPC. Investment advice offered through Valley Wealth Strategies, a registered investment advisor and separate entity from LPL Financial. Rose Financial Management, Zuk Financial Group and LPL Financial are separate and unrelated companies."
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://rosefinancialmanagement.com/#website",
+      "url": "https://rosefinancialmanagement.com/",
+      "name": "Rose Financial Management",
+      "publisher": {
+        "@id": "https://rosefinancialmanagement.com/#organization"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://rosefinancialmanagement.com/wealth-equation.html#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://rosefinancialmanagement.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "The Wealth Equation",
+          "item": "https://rosefinancialmanagement.com/wealth-equation.html"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="nav-bar" aria-label="Primary">
+    <a class="nav-logo" href="index.html" aria-label="Rose Financial Management home">
+      <img src="assets/logo-horz-reversed.png" alt="Rose Financial Management" width="731" height="168">
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="services.html">Services</a></li>
+      <li><a href="knowledge-base/index.html">Knowledge Base</a></li>
+      <li><a href="contact.html">Contact</a></li>
+      <li class="nav-cta"><a class="btn btn--solid" href="contact.html">Book a Discovery Call</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main class="article">
+
+<div class="article-head">
+  <div class="article-head-inner">
+    <p class="crumbs"><a href="index.html">Home</a><span>/</span>The Wealth Equation</p>
+    <h1>What does a financial advisor actually do?</h1>
+    <p class="lede">It is a fair question, here is how I approach it. Building wealth comes down to a single equation with a handful of variables. I can help you understand how to manage your income and keep more of what you earn. That becomes your savings. You can build long-term wealth by investing your savings according to your risk tolerance and giving it time to compound. An advisor helps you understand how the opportunities within each variable can benefit you. Then you’ll create a financial plan together and update it as your life changes.</p>
+  </div>
+</div>
+
+<div class="article-body">
+
+  <div class="observe">
+    <span class="eyebrow">The short version</span>
+    <p>What you earn, minus what leaves, is what you keep. What you keep, invested over time, is what you save. That is the whole thing. The value of advice is not a secret about markets; it is disciplined attention to each variable, year after year, especially the two that have nothing to do with asset allocation.</p>
+  </div>
+
+  <h2>The Wealth Equation</h2>
+
+  <p>Select a phase, then choose any term to see what it means and where the work happens.</p>
+
+  <div class="weq">
+    <div class="weq-phases" role="group" aria-label="Choose a phase">
+      <button type="button" class="weq-phase is-active" data-phase="accumulation" aria-pressed="true">Accumulation phase</button>
+      <button type="button" class="weq-phase" data-phase="preservation" aria-pressed="false">Preservation phase</button>
+    </div>
+
+    <div class="weq-board">
+      <span class="weq-caption" data-weq-caption>Accumulation &middot; while you are building</span>
+
+      <div class="weq-row" data-weq-row>
+        <button type="button" class="weq-term" data-key="inflow">
+          <span class="weq-name">Inflow</span>
+          <span class="weq-sub">What you earn</span>
+        </button>
+        <span class="weq-op">&minus;</span>
+        <button type="button" class="weq-term" data-key="outflow">
+          <span class="weq-name">Outflow</span>
+          <span class="weq-sub">Taxes and what you spend</span>
+        </button>
+        <span class="weq-op">=</span>
+        <button type="button" class="weq-term" data-key="savings">
+          <span class="weq-name">Savings</span>
+          <span class="weq-sub">What is left over</span>
+        </button>
+        <span class="weq-op">&times;</span>
+        <button type="button" class="weq-term" data-key="perf">
+          <span class="weq-name">Investment Performance</span>
+          <span class="weq-sub">How your money works for you</span>
+        </button>
+        <span class="weq-op">&times;</span>
+        <button type="button" class="weq-term" data-key="time">
+          <span class="weq-name">Time</span>
+          <span class="weq-sub">Ally or hurdle</span>
+        </button>
+      </div>
+
+      <p class="weq-hint" data-weq-hint>All of it multiplied by time</p>
+    </div>
+
+    <div class="weq-detail" data-weq-detail>
+      <h3>Start anywhere</h3>
+      <p class="weq-plain">Choose a term above</p>
+      <p>Each variable is a place where decisions compound. Some you control directly, some you influence, and one is mostly a matter of not getting in your own way.</p>
+    </div>
+  </div>
+
+  <h2>Why the equation flips</h2>
+
+  <p>The same equation describes both halves of a financial life, but it runs in opposite directions.</p>
+
+  <p><strong>While you are building,</strong> income comes in, taxes and spending go out, and whatever survives gets invested. Your paycheck funds your life, and your savings are leftover.</p>
+
+  <p><strong>Once you stop working,</strong> the equation reverses. Your savings and how they are invested now have to produce the inflow, and that inflow has to cover taxes and spending for the rest of your life. Your wealth now funds your paycheck.</p>
+
+  <p>That reversal is why the years before and after are so important. Your habits, the tax structure, and the allocation that served you well while building are not automatically the ones that serve you while drawing down. Most of the planning worth doing happens well before the flip, not after it.</p>
+
+  <h2>What we do</h2>
+
+  <p>Notice which variables have nothing to do with picking investments. Taxes are a planning problem. Spending is a behavior problem. Time is a discipline problem, the best day to invest was yesterday. Those three sit outside the portfolio entirely, and in many households they matter more than the portfolio does.</p>
+
+  <p>That is what a financial advisor should be doing: helping you maximize every variable, not just the one that is easiest to talk about. Investment management is certainly part of what we do. So is the tax conversation you would rather skip, the spending question nobody wants to ask, and the phone call in a bad market that keeps your plan working for you.</p>
+
+  <div class="observe">
+    <span class="eyebrow">The other side of wealth</span>
+    <p>There is a second kind of wealth this equation cannot show. Knowing where you stand. Knowing your family would be all right without you. Not lying awake doing math. That is the psychological return on a plan, and for most people it arrives almost immediately.</p>
+  </div>
+
+</div>
+
+<div class="article-cta on-dark">
+  <div class="cta-inner">
+    <span class="eyebrow">How Rose Financial can help</span>
+    <h2>Five variables.<br><em>We work all of them.</em></h2>
+    <p>A discovery call is a conversation about where you actually are in this equation, which variables could use the most attention, and what your plan needs to do. No cost, no obligation, and no pressure to decide anything on the call. We’ll know I we’re a good fit for each other.</p>
+    <a class="btn btn--solid" href="contact.html">Book a Discovery Call</a>
+  </div>
+</div>
+
+</main>
+
+<footer class="site-footer">
+  <div class="footer-top">
+    <div class="footer-brand">
+      <img src="assets/logo-horz-reversed.png" alt="Rose Financial Management">
+      <p>Financial planning and wealth management for airline pilots, military professionals and veterans, and high performers navigating high-stakes transitions. Serving clients nationwide.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Practice</h4>
+      <ul>
+        <li><a href="about.html">About Kevin</a></li>
+        <li><a href="services.html">Services</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Knowledge Base</h4>
+      <ul>
+        <li><a href="knowledge-base/index.html">Knowledge Base</a></li>
+        <li><a href="knowledge-base/military-transition/index.html">Military Transition</a></li>
+        <li><a href="knowledge-base/loss-of-a-loved-one/index.html">Loss of a Loved One</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Regulatory</h4>
+      <ul>
+        <li><a href="https://brokercheck.finra.org" rel="noopener">FINRA BrokerCheck</a></li>
+        <li><a href="https://www.lpl.com/CRS" rel="noopener">LPL Form CRS</a></li>
+        <li><a href="privacy.html">Website Privacy Notice</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-disclosure">
+    <p>Kevin Rose is a Registered Representative with, and securities are offered through, LPL Financial, member <a href="https://www.finra.org" rel="noopener">FINRA</a>/<a href="https://www.sipc.org" rel="noopener">SIPC</a>. Investment advice offered through Valley Wealth Strategies, a registered investment advisor and separate entity from LPL Financial. Rose Financial Management, Zuk Financial Group and LPL Financial are separate and unrelated companies.</p>
+    <p>This page is educational and general in nature. It is not investment, tax, or legal advice, and no strategy assures success or protects against loss.</p>
+    <p>LPL Financial representatives associated with this site may only discuss and/or transact securities business with residents of the following states: AL, AR, AZ, CA, CO, DC, FL, HI, MA, MD, MO, NM, NV, NY, OH, OK, OR, SC, TX, UT, WA, WI.</p>
+    <p>Check the background of your financial professional on FINRA's <a href="https://brokercheck.finra.org" rel="noopener">BrokerCheck</a>. Review LPL Financial's <a href="https://www.lpl.com/CRS" rel="noopener">Form CRS</a>.</p>
+    <p class="footer-meta">&copy; <span data-year>2026</span> Rose Financial Management &middot; rosefinancialmanagement.com</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+<script>
+(function () {
+  var board = document.querySelector('.weq');
+  if (!board) return;
+
+  var CONTENT = {
+      accumulation: {
+        caption: 'Accumulation · while you are building',
+        hint: '',
+        order: ['inflow', 'op-minus', 'outflow', 'op-equals', 'savings', 'op-times', 'perf', 'op-times', 'time']
+      },
+      preservation: {
+        caption: 'Preservation · when your nest egg starts paying you',
+        hint: 'This money has an important job. Asset allocation is critical.',
+        order: ['savings', 'op-times', 'perf', 'op-times', 'time', 'op-equals', 'inflow', 'op-minus', 'outflow']
+      }
+    };
+
+  var TERMS =  {
+      inflow: {
+        title: 'Inflow',
+        plain: 'What you earn',
+        body: [
+          'Salary, bonus, self-employment income, a pension, Social Security, and for many of our clients, tax-free VA compensation. Inflow is the variable most people assume is fixed, and it usually is not.',
+          'It changes at every transition: leaving the service, an upgrade, a partnership, a move from regional to major, a spouse returning to work. Those milestones carry timing decisions that can have serious impacts on your wealth.'
+        ],
+        work: 'Considerations: understanding how different kinds of income are taxed, balancing income and life goals, and being careful to avoid lifestyle creep with promotions and milestones.'
+      },
+      outflow: {
+        title: 'Outflow',
+        plain: 'Taxes and Spending Habits',
+        body: [
+          'Two very different things fall under “Outflow”, and both are manageable. Taxes are a planning problem that can be optimized. Spending is a deeply personal behavior exercise that happens every day.',
+          'Managing outflow is not about restriction. Every dollar saved from avoidable tax or undisciplined spending, are both dollars that stay in the equation and build wealth.'
+        ],
+        work: 'Considerations: tax-aware planning all year, every year, rather than a mad scramble leading up to April. We also structure accounts that optimize how each dollar is taxed, and a spending plan that works for you and your family. And perhaps most critically, your advisor acts as your coach and keeps you accountable.'
+      },
+      savings: {
+        title: 'Savings',
+        plain: 'What is left over',
+        body: [
+          'The result of the first two variables, and the only foundation the rest of the equation has to build on. Savings is where the plan becomes real, because this is the number that determines what is possible later.',
+          'It is also where structure matters more than people expect. The same dollar saved into different account types can behave very differently thirty years from now.'
+        ],
+        work: 'Considerations: matching goals to the right accounts, getting the sequence of contributions right, and building the reserve that keeps a bad month from becoming a bad decision.'
+      },
+      perf: {
+        title: 'Investment Performance',
+        plain: 'How your money works for you',
+        body: [
+          'The term everyone talks about first, and the one you control least. Markets do what they do. What is genuinely in your control is the allocation (how much risk you’re willing to take), the cost, the tax treatment, and whether you stay invested when it is uncomfortable.',
+          'That last one is not a footnote. The gap between what investments return and what investors actually receive is usually behavioral. Building a plan that works for your risk tolerance is critically important.'
+        ],
+        work: 'Considerations: an allocation designed for your timeline, disciplined rebalancing, attention to cost and tax treatment, and staying the course to keep a good plan intact in a bad market.'
+      },
+      time: {
+        title: 'Time',
+        plain: 'Your greatest ally, or your biggest hurdle',
+        body: [
+          'Time is the only variable that changes sides. While you are working, it works for you. Every year you contribute and stay invested is another year your money has an opportunity to compound, and starting sooner beats almost anything else you can do to the other four variables.',
+          'Once you stop working and your savings have to produce your income, the same variable turns into the problem to solve. Nobody knows whether the money has to last twenty years or fifty. I hope you get to spend it for many years, and that hope is exactly the planning problem: the better the outcome, the longer your savings need to serve you.'
+        ],
+        work: 'Considerations: you cannot buy back time, so starting early buys options later. Understanding how long the money lasts takes more than a rule of thumb. A plan that models the timing of your distributions shows whether you are on track and what to change if you are not.'
+      }
+    };
+
+  var row = board.querySelector('[data-weq-row]');
+  var caption = board.querySelector('[data-weq-caption]');
+  var hint = board.querySelector('[data-weq-hint]');
+  var detail = board.querySelector('[data-weq-detail]');
+  var phases = board.querySelectorAll('.weq-phase');
+
+  var termNodes = {};
+  board.querySelectorAll('.weq-term').forEach(function (n) { termNodes[n.dataset.key] = n; });
+  // Operator templates. The equation uses two multiplication signs, so
+  // operators are cloned per layout rather than moved. Appending the same
+  // node twice moves it and orphans one of the two.
+  var opTpl = {};
+  board.querySelectorAll('.weq-op').forEach(function (n) {
+    var t = n.textContent.trim();
+    var k = t === '=' ? 'op-equals' : (t === '\u00d7' ? 'op-times' : 'op-minus');
+    if (!opTpl[k]) opTpl[k] = n.cloneNode(true);
+  });
+
+  function layout(phase) {
+    var cfg = CONTENT[phase];
+    caption.innerHTML = cfg.caption;
+    hint.textContent = cfg.hint || '';
+    hint.style.display = cfg.hint ? '' : 'none';
+    Array.prototype.slice.call(row.querySelectorAll('.weq-op'))
+      .forEach(function (n) { n.parentNode.removeChild(n); });
+    cfg.order.forEach(function (k) {
+      if (termNodes[k]) { row.appendChild(termNodes[k]); }
+      else if (opTpl[k]) { row.appendChild(opTpl[k].cloneNode(true)); }
+    });
+  }
+
+  function showTerm(key) {
+    var t = TERMS[key];
+    if (!t) return;
+    Object.keys(termNodes).forEach(function (k) {
+      termNodes[k].classList.toggle('is-active', k === key);
+    });
+    var html = '<h3>' + t.title + '</h3><p class="weq-plain">' + t.plain + '</p>';
+    t.body.forEach(function (p) { html += '<p>' + p + '</p>'; });
+    html += '<p class="weq-work">' + t.work + '</p>';
+    detail.innerHTML = html;
+  }
+
+  board.addEventListener('click', function (e) {
+    var phaseBtn = e.target.closest('.weq-phase');
+    if (phaseBtn) {
+      phases.forEach(function (b) {
+        var on = b === phaseBtn;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      layout(phaseBtn.dataset.phase);
+      return;
+    }
+    var termBtn = e.target.closest('.weq-term');
+    if (termBtn) showTerm(termBtn.dataset.key);
+  });
+
+  // Run once on load. Without this the markup in the HTML is what shows until
+  // the first phase click, so any hint or ordering set in CONTENT is ignored
+  // on arrival. The default phase is whichever button is marked active.
+  var startBtn = board.querySelector('.weq-phase.is-active') || phases[0];
+  layout(startBtn ? startBtn.dataset.phase : 'accumulation');
+})();
+</script>
+</body>
+</html>
