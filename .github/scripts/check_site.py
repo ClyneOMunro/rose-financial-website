@@ -47,6 +47,18 @@ INTERNAL_NAME_RE = re.compile(
     re.I,
 )
 PLACEHOLDER_RE = re.compile(r"(TODO|FIXME|XXX|LOREM IPSUM|\bTK\b|PLACEHOLDER|\[INSERT)", re.I)
+# Build notes are invisible in a browser but readable in view-source. One saying
+# the disclosures were unapproved sat on all 19 pages from launch until Aug 2026.
+# Checked against raw HTML, not visible text, because that is how it survived.
+BUILD_NOTE_RE = re.compile(
+    r"<!--(?:(?!-->).)*?\b("
+    r"language to be (supplied|provided|approved)"
+    r"|to be (supplied|provided|drafted|written) by"
+    r"|final (copy|language|disclosure)[^>]{0,40}\bTBD\b"
+    r"|\bTBD\b|\bLOREM\b|\bFIXME\b|\bXXX\b"
+    r")",
+    re.I | re.S,
+)
 GLOB_JUNK_RE = re.compile(r"[\*\?\[\]]|\{.*,.*\}")
 COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 SCRIPT_STYLE_RE = re.compile(r"<(script|style)\b.*?</\1>", re.S | re.I)
@@ -119,6 +131,11 @@ def check_page(root: Path, path: Path, plausible_seen: list):
     m = PLACEHOLDER_RE.search(text)
     if m:
         block(f"{rel}: placeholder text {m.group(0)!r} in visible copy")
+
+    m = BUILD_NOTE_RE.search(raw)
+    if m:
+        block(f"{rel}: unfinished-copy note left in an HTML comment "
+              f"({m.group(1)!r}). Invisible in a browser, readable in view-source.")
 
     if UNPROVISIONED_EMAIL in raw.lower():
         block(f"{rel}: unprovisioned RFM email address present")
